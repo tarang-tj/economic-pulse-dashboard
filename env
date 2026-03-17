@@ -1,4 +1,0 @@
-# .env.example — copy to .env and fill in your key
-# Get a free FRED API key at: https://fred.stlouisfed.org/docs/api/api_key.html
-
-FRED_API_KEY= ba088c2bf024c46d7475b7512ef6a0ae
