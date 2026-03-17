@@ -4,7 +4,7 @@ An end-to-end Python data pipeline that fetches, cleans, and visualizes key US a
 
 ![Dashboard Preview](assets/preview.png)
 
-**Live demo:** *(deploy to Streamlit Community Cloud — link here)*
+**Live demo:** *https://economic-pulse-dashboard-bwxtaias7g4h7ctqpcntbg.streamlit.app/*
 
 ---
 
