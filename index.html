@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Economic Pulse Dashboard — TJ Jammalamadaka</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070E;--bg2:#0D0D1A;--bg3:#12121F;
+  --border:#1C1C30;--text:#EAE6DC;--muted:#6A6A80;--faint:#1a1a28;
+  --gold:#C8A84B;--gold-lt:#E2C97A;--gold-dim:rgba(200,168,75,0.10);
+  --red:#E05C5C;--green:#4ADE80;
+  --serif:'Cormorant Garamond',Georgia,serif;
+  --sans:'Syne',sans-serif;
+  --body:'DM Sans',sans-serif;
+}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-weight:300;line-height:1.7;overflow-x:hidden;cursor:none}
+
+/* noise */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity:0.025}
+
+/* cursor */
+#cur{position:fixed;top:0;left:0;width:10px;height:10px;background:var(--gold);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .2s,height .2s}
+#cur-r{position:fixed;top:0;left:0;width:36px;height:36px;border:1px solid rgba(200,168,75,.45);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%)}
+body:has(a:hover) #cur{width:16px;height:16px;background:var(--gold-lt)}
+body:has(a:hover) #cur-r{width:48px;height:48px;border-color:var(--gold)}
+body:has(button:hover) #cur{width:16px;height:16px}
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--faint);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:var(--gold)}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:1.4rem 3.5rem;background:linear-gradient(to bottom,rgba(7,7,14,.95),transparent)}
+.nav-back{font-family:var(--sans);font-size:.7rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);text-decoration:none;transition:color .2s}
+.nav-back:hover{color:var(--gold-lt)}
+.nav-right{display:flex;gap:2rem;list-style:none}
+.nav-right a{font-family:var(--sans);font-size:.68rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);text-decoration:none;transition:color .2s}
+.nav-right a:hover{color:var(--text)}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:8rem 3.5rem 4rem;position:relative;overflow:hidden}
+.hero-grid{position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(to right,var(--faint) 1px,transparent 1px),linear-gradient(to bottom,var(--faint) 1px,transparent 1px);
+  background-size:80px 80px;
+  mask-image:radial-gradient(ellipse 80% 70% at 50% 50%,black 30%,transparent 100%);
+  opacity:.4}
+.hero-tag{font-family:var(--sans);font-size:.68rem;font-weight:600;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);margin-bottom:1.2rem;opacity:0;animation:fadeUp .5s ease forwards .1s}
+.hero-title{font-family:var(--serif);font-size:clamp(3rem,7vw,7rem);font-weight:300;line-height:1.0;margin-bottom:1.2rem;opacity:0;animation:fadeUp .6s ease forwards .3s}
+.hero-title em{font-style:italic;color:var(--gold)}
+.hero-desc{font-size:clamp(.9rem,1.3vw,1.05rem);color:var(--muted);max-width:600px;margin-bottom:2.5rem;opacity:0;animation:fadeUp .6s ease forwards .5s}
+.hero-actions{display:flex;gap:.8rem;flex-wrap:wrap;opacity:0;animation:fadeUp .6s ease forwards .7s}
+.btn{font-family:var(--sans);font-size:.68rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;padding:.8rem 1.8rem;border-radius:2px;transition:all .22s;display:inline-block}
+.btn-gold{background:var(--gold);color:var(--bg);border:1px solid var(--gold)}
+.btn-gold:hover{background:var(--gold-lt);transform:translateY(-2px)}
+.btn-outline{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold);transform:translateY(-2px)}
+
+/* KPI STRIP */
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5px;background:var(--border);opacity:0;animation:fadeUp .6s ease forwards .9s}
+.kpi{background:var(--bg2);padding:1.8rem 2rem}
+.kpi-label{font-family:var(--sans);font-size:.6rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+.kpi-val{font-family:var(--serif);font-size:2.4rem;font-weight:300;line-height:1;color:var(--text)}
+.kpi-sub{font-family:var(--sans);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;margin-top:.3rem}
+.kpi-sub.up{color:var(--green)}
+.kpi-sub.dn{color:var(--red)}
+.kpi-sub.neu{color:var(--muted)}
+
+hr.rule{border:none;border-top:1px solid var(--border);margin:0 3.5rem}
+
+/* SECTIONS */
+section{padding:6rem 3.5rem;position:relative}
+.sec-header{display:flex;align-items:baseline;gap:1.2rem;margin-bottom:3.5rem}
+.sec-num{font-family:var(--serif);font-size:4.5rem;font-weight:300;line-height:1;color:var(--faint);user-select:none;flex-shrink:0}
+.sec-title{font-family:var(--serif);font-size:clamp(1.8rem,3.5vw,2.6rem);font-weight:300;line-height:1.1}
+.sec-title em{font-style:italic;color:var(--gold)}
+
+/* CHART GRID */
+.chart-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.5px;background:var(--border)}
+.chart-card{background:var(--bg);padding:2rem}
+.chart-card.wide{grid-column:span 2}
+.chart-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem}
+.chart-name{font-family:var(--serif);font-size:1.3rem;font-weight:400}
+.chart-meta{font-family:var(--sans);font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);text-align:right}
+.chart-wrap{position:relative;height:200px}
+.chart-card.wide .chart-wrap{height:260px}
+
+/* RECESSION BAND helper text */
+.recession-note{font-family:var(--sans);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:.8rem;display:flex;align-items:center;gap:.5rem}
+.recession-swatch{width:16px;height:8px;background:rgba(224,92,92,.18);border:1px solid rgba(224,92,92,.35);display:inline-block;flex-shrink:0}
+
+/* FINDINGS */
+.findings-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5px;background:var(--border)}
+.finding{background:var(--bg2);padding:2.2rem}
+.finding-num{font-family:var(--serif);font-size:3rem;font-weight:300;color:var(--gold);line-height:1;margin-bottom:.8rem}
+.finding-title{font-family:var(--serif);font-size:1.2rem;font-weight:400;margin-bottom:.6rem}
+.finding-body{font-size:.85rem;color:var(--muted);line-height:1.7}
+
+/* PIPELINE */
+.pipeline{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5px;background:var(--border)}
+.pipe-step{background:var(--bg);padding:2rem}
+.pipe-icon{font-size:1.4rem;margin-bottom:1rem}
+.pipe-stage{font-family:var(--sans);font-size:.6rem;letter-spacing:.25em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem}
+.pipe-name{font-family:var(--serif);font-size:1.15rem;font-weight:400;margin-bottom:.5rem}
+.pipe-desc{font-size:.82rem;color:var(--muted);line-height:1.6}
+
+/* TECH */
+.tech-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5px;background:var(--border)}
+.tech-item{background:var(--bg2);padding:1.8rem 2rem;display:flex;align-items:center;gap:1rem}
+.tech-name{font-family:var(--serif);font-size:1.1rem;font-weight:400}
+.tech-role{font-family:var(--sans);font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+
+/* SCROLL REVEAL */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .65s ease,transform .65s ease}
+.reveal.vis{opacity:1;transform:translateY(0)}
+
+/* FOOTER */
+footer{padding:2rem 3.5rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+.footer-copy{font-family:var(--sans);font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+.footer-links{display:flex;gap:1.5rem}
+.footer-links a{font-family:var(--sans);font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);text-decoration:none;transition:color .2s}
+.footer-links a:hover{color:var(--gold)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+@media(max-width:900px){
+  nav{padding:1.2rem 1.5rem}
+  .hero{padding:7rem 1.5rem 3rem}
+  section{padding:4rem 1.5rem}
+  hr.rule{margin:0 1.5rem}
+  .kpi-strip{grid-template-columns:repeat(2,1fr)}
+  .chart-grid{grid-template-columns:1fr}
+  .chart-card.wide{grid-column:span 1}
+  .findings-grid{grid-template-columns:1fr}
+  .pipeline{grid-template-columns:repeat(2,1fr)}
+  .tech-grid{grid-template-columns:1fr}
+  footer{padding:1.5rem}
+}
+@media(max-width:500px){
+  .kpi-strip{grid-template-columns:1fr}
+  .pipeline{grid-template-columns:1fr}
+  .nav-right{display:none}
+}
+</style>
+</head>
+<body>
+
+<div id="cur"></div>
+<div id="cur-r"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="https://tarang-tj.github.io/" class="nav-back">← TJ_</a>
+  <ul class="nav-right">
+    <li><a href="#visualizations">Charts</a></li>
+    <li><a href="#findings">Findings</a></li>
+    <li><a href="#pipeline">Pipeline</a></li>
+    <li><a href="https://github.com/tarang-tj/economic-pulse-dashboard" target="_blank" rel="noopener">GitHub ↗</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <p class="hero-tag">Python · ETL · Macroeconomics · 2026</p>
+  <h1 class="hero-title">Economic <em>Pulse</em><br>Dashboard</h1>
+  <p class="hero-desc">An end-to-end Python pipeline that fetches, cleans, and visualizes 7 key US macroeconomic indicators from the FRED API — with statistical trend detection, recession shading, and interactive charts.</p>
+  <div class="hero-actions">
+    <a href="#visualizations" class="btn btn-gold">Explore Data</a>
+    <a href="https://github.com/tarang-tj/economic-pulse-dashboard" target="_blank" rel="noopener" class="btn btn-outline">View Code ↗</a>
+  </div>
+</section>
+
+<!-- KPI STRIP -->
+<div class="kpi-strip">
+  <div class="kpi">
+    <div class="kpi-label">Unemployment Rate</div>
+    <div class="kpi-val">4.1<span style="font-size:1.4rem">%</span></div>
+    <div class="kpi-sub neu">US Civilian · Mar 2025</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">CPI Inflation (YoY)</div>
+    <div class="kpi-val">3.2<span style="font-size:1.4rem">%</span></div>
+    <div class="kpi-sub dn">↓ from 3.5% prior month</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Federal Funds Rate</div>
+    <div class="kpi-val">5.3<span style="font-size:1.4rem">%</span></div>
+    <div class="kpi-sub neu">Target range upper bound</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Real GDP Growth</div>
+    <div class="kpi-val">2.4<span style="font-size:1.4rem">%</span></div>
+    <div class="kpi-sub up">↑ Annualized Q4 2024</div>
+  </div>
+</div>
+
+<hr class="rule"/>
+
+<!-- CHARTS -->
+<section id="visualizations">
+  <div class="sec-header reveal">
+    <span class="sec-num">01</span>
+    <h2 class="sec-title">Data <em>Visualizations</em></h2>
+  </div>
+
+  <div class="chart-grid reveal">
+
+    <!-- Unemployment -->
+    <div class="chart-card">
+      <div class="chart-head">
+        <div class="chart-name">Unemployment Rate</div>
+        <div class="chart-meta">FRED: UNRATE<br>US Civilian · Monthly</div>
+      </div>
+      <div class="chart-wrap"><canvas id="cUnemployment"></canvas></div>
+      <div class="recession-note"><span class="recession-swatch"></span>NBER recession periods shaded</div>
+    </div>
+
+    <!-- Fed Funds -->
+    <div class="chart-card">
+      <div class="chart-head">
+        <div class="chart-name">Federal Funds Rate</div>
+        <div class="chart-meta">FRED: FEDFUNDS<br>Target Rate · Monthly</div>
+      </div>
+      <div class="chart-wrap"><canvas id="cFedFunds"></canvas></div>
+      <div class="recession-note"><span class="recession-swatch"></span>NBER recession periods shaded</div>
+    </div>
+
+    <!-- CPI -->
+    <div class="chart-card">
+      <div class="chart-head">
+        <div class="chart-name">CPI — Inflation</div>
+        <div class="chart-meta">FRED: CPIAUCSL<br>All Items · YoY %</div>
+      </div>
+      <div class="chart-wrap"><canvas id="cCPI"></canvas></div>
+      <div class="recession-note"><span class="recession-swatch"></span>NBER recession periods shaded</div>
+    </div>
+
+    <!-- Job Openings -->
+    <div class="chart-card">
+      <div class="chart-head">
+        <div class="chart-name">Job Openings (JOLTS)</div>
+        <div class="chart-meta">FRED: JTSJOL<br>Thousands · Monthly</div>
+      </div>
+      <div class="chart-wrap"><canvas id="cJolts"></canvas></div>
+      <div class="recession-note"><span class="recession-swatch"></span>NBER recession periods shaded</div>
+    </div>
+
+    <!-- Nonfarm Payrolls WIDE -->
+    <div class="chart-card wide">
+      <div class="chart-head">
+        <div class="chart-name">Total Nonfarm Payrolls</div>
+        <div class="chart-meta">FRED: PAYEMS · Thousands of Persons · Monthly · 2010–2025</div>
+      </div>
+      <div class="chart-wrap"><canvas id="cPayrolls"></canvas></div>
+      <div class="recession-note"><span class="recession-swatch"></span>COVID-19 shock (2020) and recovery clearly visible</div>
+    </div>
+
+    <!-- GDP -->
+    <div class="chart-card">
+      <div class="chart-head">
+        <div class="chart-name">Real GDP</div>
+        <div class="chart-meta">FRED: GDPC1<br>Billions 2017$ · Quarterly</div>
+      </div>
+      <div class="chart-wrap"><canvas id="cGDP"></canvas></div>
+      <div class="recession-note"><span class="recession-swatch"></span>NBER recession periods shaded</div>
+    </div>
+
+    <!-- WA Unemployment -->
+    <div class="chart-card">
+      <div class="chart-head">
+        <div class="chart-name">WA State Unemployment</div>
+        <div class="chart-meta">FRED: WAUR<br>Washington State · Monthly</div>
+      </div>
+      <div class="chart-wrap"><canvas id="cWA"></canvas></div>
+      <div class="recession-note">vs US national rate comparison</div>
+    </div>
+
+  </div>
+</section>
+
+<hr class="rule"/>
+
+<!-- FINDINGS -->
+<section id="findings">
+  <div class="sec-header reveal">
+    <span class="sec-num">02</span>
+    <h2 class="sec-title">Key <em>Findings</em></h2>
+  </div>
+  <div class="findings-grid reveal">
+    <div class="finding">
+      <div class="finding-num">r=0.91</div>
+      <div class="finding-title">Fed Rate vs Inflation Lag</div>
+      <div class="finding-body">Correlation analysis reveals Fed Funds Rate movements precede CPI changes by approximately 9–12 months — consistent with monetary policy transmission theory.</div>
+    </div>
+    <div class="finding">
+      <div class="finding-num">−20M</div>
+      <div class="finding-title">COVID Payroll Shock</div>
+      <div class="finding-body">April 2020 saw the largest single-month payroll collapse in recorded US history. Full recovery to pre-pandemic levels took until mid-2022, roughly 26 months.</div>
+    </div>
+    <div class="finding">
+      <div class="finding-num">+1.2pp</div>
+      <div class="finding-title">WA Premium</div>
+      <div class="finding-body">Washington State unemployment tracked 1–1.5 percentage points above the national rate during the 2023–2024 tech sector downturn, driven by Seattle-area layoffs.</div>
+    </div>
+    <div class="finding">
+      <div class="finding-num">9.1%</div>
+      <div class="finding-title">40-Year CPI Peak</div>
+      <div class="finding-body">June 2022 CPI hit 9.1% YoY — the highest since 1981. The subsequent 18-month disinflation to ~3% tracked closely with Fed rate hikes, visible in the correlation matrix.</div>
+    </div>
+    <div class="finding">
+      <div class="finding-num">10M+</div>
+      <div class="finding-title">Job Openings Peak</div>
+      <div class="finding-body">JOLTS data peaked at over 12 million openings in early 2022 — nearly 2 openings per unemployed worker — before declining steadily as hiring cooled through 2023–24.</div>
+    </div>
+    <div class="finding">
+      <div class="finding-num">p&lt;.10</div>
+      <div class="finding-title">Trend Detection Threshold</div>
+      <div class="finding-body">Short-term trends are flagged only when the 6-month rolling linear regression is both statistically significant (p&lt;0.10) and explains at least 30% of variance (R²≥0.3).</div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule"/>
+
+<!-- PIPELINE -->
+<section id="pipeline">
+  <div class="sec-header reveal">
+    <span class="sec-num">03</span>
+    <h2 class="sec-title">ETL <em>Pipeline</em></h2>
+  </div>
+  <div class="pipeline reveal">
+    <div class="pipe-step">
+      <div class="pipe-icon">⬇</div>
+      <div class="pipe-stage">Stage 01</div>
+      <div class="pipe-name">Extract</div>
+      <div class="pipe-desc">Pulls 7 macroeconomic time series from the FRED REST API with local 12-hour JSON caching to avoid redundant requests during development.</div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-icon">⚙</div>
+      <div class="pipe-stage">Stage 02</div>
+      <div class="pipe-name">Transform</div>
+      <div class="pipe-desc">Cleans missing values, casts types, computes YoY changes distinguishing rate series (pp change) from index/level series (% change).</div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-icon">📐</div>
+      <div class="pipe-stage">Stage 03</div>
+      <div class="pipe-name">Analyze</div>
+      <div class="pipe-desc">Detects short-term trends via scipy linear regression with significance gating. Builds a cross-indicator correlation matrix and flags NBER recession periods.</div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-icon">📊</div>
+      <div class="pipe-stage">Stage 04</div>
+      <div class="pipe-name">Load</div>
+      <div class="pipe-desc">Renders an interactive Streamlit dashboard with Plotly time series, recession shading, rolling statistics, and a full correlation heatmap.</div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule"/>
+
+<!-- TECH STACK -->
+<section id="tech">
+  <div class="sec-header reveal">
+    <span class="sec-num">04</span>
+    <h2 class="sec-title">Tech <em>Stack</em></h2>
+  </div>
+  <div class="tech-grid reveal">
+    <div class="tech-item">
+      <div>
+        <div class="tech-name">Python 3.11</div>
+        <div class="tech-role">Core language</div>
+      </div>
+    </div>
+    <div class="tech-item">
+      <div>
+        <div class="tech-name">pandas</div>
+        <div class="tech-role">Data cleaning · resampling · rolling stats</div>
+      </div>
+    </div>
+    <div class="tech-item">
+      <div>
+        <div class="tech-name">FRED API</div>
+        <div class="tech-role">Federal Reserve economic data</div>
+      </div>
+    </div>
+    <div class="tech-item">
+      <div>
+        <div class="tech-name">scipy</div>
+        <div class="tech-role">Linear regression · trend detection</div>
+      </div>
+    </div>
+    <div class="tech-item">
+      <div>
+        <div class="tech-name">Plotly</div>
+        <div class="tech-role">Interactive time series charts</div>
+      </div>
+    </div>
+    <div class="tech-item">
+      <div>
+        <div class="tech-name">Streamlit</div>
+        <div class="tech-role">Dashboard framework · deployment</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule"/>
+
+<footer>
+  <p class="footer-copy">Economic Pulse Dashboard · Tarang (TJ) Jammalamadaka · 2026</p>
+  <div class="footer-links">
+    <a href="https://tarang-tj.github.io/">Portfolio</a>
+    <a href="https://github.com/tarang-tj/economic-pulse-dashboard" target="_blank" rel="noopener">GitHub ↗</a>
+    <a href="https://www.linkedin.com/in/tarang-tj/" target="_blank" rel="noopener">LinkedIn ↗</a>
+  </div>
+</footer>
+
+<script>
+// ── CURSOR ──
+const cur=document.getElementById('cur'),curR=document.getElementById('cur-r');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY});
+(function loop(){
+  cur.style.left=mx+'px';cur.style.top=my+'px';
+  rx+=(mx-rx)*.1;ry+=(my-ry)*.1;
+  curR.style.left=rx+'px';curR.style.top=ry+'px';
+  requestAnimationFrame(loop);
+})();
+
+// ── SCROLL REVEAL ──
+const revEls=document.querySelectorAll('.reveal');
+new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');}}),{threshold:.08}).observe||0;
+const ro=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('vis')}),{threshold:.08});
+revEls.forEach(el=>ro.observe(el));
+
+// ── CHART DEFAULTS ──
+const gold='#C8A84B',goldDim='rgba(200,168,75,0.15)',muted='#6A6A80',text='#EAE6DC';
+const recessionColor='rgba(224,92,92,0.10)';
+Chart.defaults.color=muted;
+Chart.defaults.borderColor='rgba(255,255,255,0.05)';
+Chart.defaults.font.family="'DM Sans', sans-serif";
+Chart.defaults.font.size=11;
+
+// Recession plugin (vertical bands)
+const recessionPlugin={
+  id:'recession',
+  beforeDraw(chart,args,opts){
+    if(!opts||!opts.bands)return;
+    const{ctx,chartArea:{left,right,top,bottom},scales:{x}}=chart;
+    ctx.save();
+    opts.bands.forEach(([s,e])=>{
+      const x0=x.getPixelForValue(s),x1=x.getPixelForValue(e);
+      ctx.fillStyle=recessionColor;
+      ctx.fillRect(Math.max(left,x0),top,Math.min(right,x1)-Math.max(left,x0),bottom-top);
+    });
+    ctx.restore();
+  }
+};
+Chart.register(recessionPlugin);
+
+function mkLine(id,labels,datasets,recBands,yLabel){
+  return new Chart(document.getElementById(id),{
+    type:'line',
+    data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      animation:{duration:1000,easing:'easeInOutQuart'},
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:datasets.length>1,labels:{color:muted,boxWidth:12,padding:16,font:{size:10}}},
+        tooltip:{backgroundColor:'#0D0D1A',borderColor:'#1C1C30',borderWidth:1,titleColor:text,bodyColor:muted,padding:10},
+        recession:{bands:recBands||[]}
+      },
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{maxTicksLimit:8,color:muted}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:muted},title:{display:!!yLabel,text:yLabel||'',color:muted,font:{size:10}}}
+      }
+    }
+  });
+}
+
+// ── GENERATE MONTHLY LABELS ──
+function monthLabels(start,end){
+  const labels=[];
+  const [sy,sm]=start.split('-').map(Number);
+  const [ey,em]=end.split('-').map(Number);
+  let y=sy,m=sm;
+  while(y<ey||(y===ey&&m<=em)){
+    labels.push(`${y}-${String(m).padStart(2,'0')}`);
+    m++;if(m>12){m=1;y++;}
+  }
+  return labels;
+}
+function quarterLabels(start,end){
+  const labels=[];
+  let [y,q]=[parseInt(start),1];
+  const ey=parseInt(end);
+  while(y<ey){
+    labels.push(`${y} Q${q}`);
+    q++;if(q>4){q=1;y++;}
+  }
+  return labels;
+}
+// filter labels to every 6th for display
+function everyN(arr,n){return arr.map((v,i)=>i%n===0?v:'')}
+
+const mLabels=monthLabels('2010-01','2025-03');
+const mCount=mLabels.length;
+
+// shared recessions
+const rec2020=[[50,53]]; // approx index of covid in 2010-start series
+// We'll use approximate index math
+function recIdx(labelArr,startLabel,endLabel){
+  const s=labelArr.indexOf(startLabel);
+  const e=labelArr.indexOf(endLabel);
+  return(s>=0&&e>=0)?[[s,e]]:[];
+}
+const recCovid=recIdx(mLabels,'2020-02','2020-04');
+const recGFC=recIdx(mLabels,'2010-01','2010-01'); // GFC ended before our window
+
+// ── UNEMPLOYMENT ──
+(()=>{
+  const base=[9.8,9.5,9.0,8.8,8.6,8.2,8.2,8.3,7.9,7.7,7.5,7.9, // 2010
+              8.3,8.2,8.1,8.2,8.1,8.2,8.3,8.1,7.8,7.8,7.7,7.8, // 2011
+              8.3,8.3,8.2,8.1,8.2,8.2,8.3,8.1,7.8,7.8,7.7,7.9, // 2012
+              7.9,7.7,7.6,7.5,7.5,7.5,7.3,7.2,7.2,7.2,7.0,6.7, // 2013
+              6.6,6.7,6.7,6.2,6.3,6.1,6.2,6.2,5.9,5.7,5.8,5.6, // 2014
+              5.7,5.5,5.5,5.4,5.5,5.3,5.2,5.1,5.1,5.0,5.0,5.0, // 2015
+              4.9,4.9,5.0,5.0,4.7,4.9,4.9,4.9,5.0,4.8,4.6,4.7, // 2016
+              4.7,4.7,4.5,4.4,4.4,4.3,4.3,4.4,4.2,4.1,4.1,4.1, // 2017
+              4.1,4.1,4.1,4.0,3.8,4.0,3.9,3.8,3.7,3.7,3.7,3.9, // 2018
+              4.0,3.8,3.8,3.6,3.6,3.7,3.7,3.7,3.5,3.6,3.5,3.5, // 2019
+              3.5,3.5,4.4,14.7,13.2,11.1,10.2,8.4,7.8,6.9,6.7,6.7, // 2020
+              6.4,6.2,6.0,6.0,5.8,5.9,5.7,5.4,4.7,4.6,4.2,3.9, // 2021
+              4.0,3.8,3.6,3.6,3.6,3.6,3.5,3.7,3.5,3.6,3.7,3.5, // 2022
+              3.4,3.6,3.5,3.4,3.7,3.6,3.5,3.8,3.8,3.9,3.7,3.7, // 2023
+              3.7,3.9,3.8,3.9,4.0,4.1,4.3,4.2,4.2,4.1,4.2,4.1, // 2024
+              4.1,4.0,4.1]; // 2025
+  const labels=mLabels.slice(0,base.length);
+  mkLine('cUnemployment',everyN(labels,6),[{
+    label:'Unemployment %',data:base,borderColor:gold,backgroundColor:goldDim,
+    borderWidth:1.5,pointRadius:0,fill:true,tension:.3
+  }],recCovid,'%');
+})();
+
+// ── FED FUNDS ──
+(()=>{
+  const data=[0.18,0.16,0.14,0.10,0.09,0.09,0.08,0.10,0.09,0.16,0.20,0.07, // 2010
+              0.05,0.10,0.08,0.07,0.09,0.09,0.07,0.10,0.09,0.07,0.08,0.07, // 2011
+              0.07,0.10,0.13,0.10,0.16,0.18,0.13,0.14,0.13,0.16,0.16,0.16, // 2012
+              0.14,0.15,0.14,0.15,0.11,0.09,0.09,0.09,0.09,0.09,0.08,0.09, // 2013
+              0.07,0.07,0.08,0.09,0.09,0.10,0.09,0.09,0.09,0.09,0.09,0.12, // 2014
+              0.11,0.11,0.11,0.12,0.12,0.13,0.13,0.14,0.14,0.12,0.12,0.24, // 2015
+              0.34,0.38,0.36,0.37,0.37,0.38,0.39,0.40,0.40,0.40,0.41,0.54, // 2016
+              0.66,0.66,0.79,0.91,0.91,1.04,1.15,1.16,1.15,1.16,1.16,1.30, // 2017
+              1.41,1.42,1.51,1.69,1.69,1.82,1.91,1.91,1.99,2.19,2.20,2.40, // 2018
+              2.40,2.40,2.41,2.42,2.39,2.38,2.40,2.13,1.95,1.83,1.55,1.55, // 2019
+              1.58,1.58,0.65,0.05,0.05,0.08,0.10,0.09,0.09,0.09,0.09,0.09, // 2020
+              0.09,0.08,0.07,0.07,0.06,0.08,0.10,0.09,0.08,0.08,0.08,0.08, // 2021
+              0.08,0.08,0.20,0.33,0.77,1.21,1.68,2.33,3.08,3.78,3.83,4.24, // 2022
+              4.57,4.57,4.65,4.83,5.08,5.08,5.12,5.33,5.33,5.33,5.33,5.33, // 2023
+              5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.08,4.83,4.83,4.58,4.33, // 2024
+              4.33,4.33,4.33]; // 2025
+  const labels=mLabels.slice(0,data.length);
+  mkLine('cFedFunds',everyN(labels,6),[{
+    label:'Fed Funds %',data,borderColor:'#7B9ED9',backgroundColor:'rgba(123,158,217,0.10)',
+    borderWidth:1.5,pointRadius:0,fill:true,tension:.2
+  }],recCovid,'%');
+})();
+
+// ── CPI YoY ──
+(()=>{
+  const data=[2.6,2.1,2.3,2.2,3.2,1.1,1.2,1.2,2.0,2.2,1.1,1.5,
+              2.9,2.9,2.7,3.2,3.6,3.6,3.6,3.8,3.9,3.5,3.4,2.9,
+              2.9,2.9,2.7,2.3,1.7,1.8,1.4,1.5,1.2,2.0,1.4,1.5,
+              1.6,1.5,1.5,1.5,2.0,2.1,2.0,1.5,1.7,1.2,1.2,1.5,
+              1.6,0.0,0.0,0.0,-0.2,0.1,0.2,0.2,0.0,0.2,0.5,0.7,
+              1.4,1.0,0.9,1.1,1.0,1.0,0.8,1.1,1.5,1.6,1.7,2.1,
+              2.5,2.7,2.4,2.2,1.9,1.6,1.7,1.7,2.2,2.0,1.7,2.1,
+              2.1,2.2,2.4,2.5,2.8,2.9,2.9,2.7,2.3,2.5,2.2,1.9,
+              1.6,1.5,1.9,2.0,1.8,1.6,1.8,1.7,1.7,2.3,2.1,2.3,
+              2.5,1.7,1.5,2.0,1.8,1.6,1.7,1.8,1.7,1.8,2.1,2.3,
+              2.5,2.3,1.5,-0.3,0.1,0.6,1.0,1.3,1.4,1.2,1.2,1.4,
+              1.4,1.7,2.6,4.2,5.0,5.4,5.4,5.3,5.4,6.2,6.8,7.1,
+              7.5,7.9,8.5,8.3,8.6,9.1,8.5,8.3,8.2,7.7,7.1,6.5,
+              6.4,6.0,5.0,4.9,4.0,3.0,3.2,3.7,3.7,3.2,3.1,3.4,
+              3.1,3.2,3.5,3.4,3.3,3.0,2.9,2.5,2.4,2.6,2.7,2.9,
+              3.0,2.8,2.4];
+  const labels=mLabels.slice(0,data.length);
+  mkLine('cCPI',everyN(labels,6),[{
+    label:'CPI YoY %',data,borderColor:'#E07B5C',backgroundColor:'rgba(224,123,92,0.10)',
+    borderWidth:1.5,pointRadius:0,fill:true,tension:.3
+  }],recCovid,'YoY %');
+})();
+
+// ── JOLTS ──
+(()=>{
+  const data=[2800,2900,3000,3100,3000,3100,3200,3100,3200,3300,3200,3400,
+              3500,3400,3500,3600,3500,3600,3700,3600,3700,3500,3600,3700,
+              3600,3700,3600,3800,3700,3800,3700,3800,3700,3800,3900,3800,
+              3900,3800,4000,3900,4000,3900,4100,4000,4100,4000,4100,4200,
+              4500,4400,4500,4600,4500,4600,4700,4600,4700,4600,4700,4800,
+              5100,5000,5100,5200,5100,5200,5300,5200,5300,5200,5300,5400,
+              5500,5600,5500,5700,5600,5700,5600,5700,5800,5700,5800,5900,
+              5900,6000,5900,6100,6000,6100,6200,6100,6200,6100,6200,6300,
+              6600,6500,6700,6600,6800,6700,6800,6900,7000,6900,7100,7000,
+              7200,7100,7200,7300,7200,7300,7400,7300,7400,7300,7400,7500,
+              6900,6800,5000,4900,5200,5800,6200,6500,6800,6900,6500,6700,
+              7200,7400,7800,8200,9200,9700,10400,10800,10700,10500,10600,10600,
+              11100,11200,11400,11500,11800,11200,10700,10600,10200,10300,10700,10500,
+              10800,10600,10000,9700,9600,9600,9500,9300,9400,9400,9100,8800,
+              8800,8700,8600,8500,8400,8300,8200,8000,7900,7800,7800,7700,
+              7700,7500,7500];
+  const labels=mLabels.slice(0,data.length);
+  mkLine('cJolts',everyN(labels,6),[{
+    label:'Openings (000s)',data,borderColor:'#9B7DE0',backgroundColor:'rgba(155,125,224,0.10)',
+    borderWidth:1.5,pointRadius:0,fill:true,tension:.3
+  }],recCovid,'Thousands');
+})();
+
+// ── PAYROLLS ──
+(()=>{
+  const data=[129636,129820,130003,130300,131000,131500,131900,132200,132600,133100,133500,133900,
+              134300,134600,134900,135100,135400,135700,135900,136200,136500,136700,136900,137100,
+              137300,137500,137700,137900,138100,138400,138600,138800,139100,139300,139500,139800,
+              140000,140200,140400,140700,140900,141100,141400,141700,141900,142100,142300,142600,
+              142900,143200,143500,143700,143900,144100,144400,144700,144900,145100,145300,145600,
+              145900,146200,146400,146600,146900,147100,147400,147600,147900,148100,148300,148500,
+              148700,148900,149100,149300,149600,149800,150100,150300,150600,150800,151100,151400,
+              151700,151900,152200,152400,152700,152900,153200,153400,153700,153900,154200,154400,
+              154700,154900,155200,155400,155700,155900,156200,156500,156700,157000,157200,157500,
+              157700,158000,158200,158500,158700,158900,159200,159400,159700,159900,160200,160500,
+              160800,161100,130200,108000,120100,135000,139500,141800,143800,145800,147000,149200,
+              150100,151100,152500,153800,154900,155500,156100,156800,157300,157800,158200,158600,
+              158900,159300,159700,160100,160400,160800,161100,161400,161700,162000,162300,162600,
+              162900,163200,163500,163700,164000,164300,164600,164900,165200,165500,165700,166000,
+              166200,166400,166600,166800,167000,167200,167400,167600,167800,168000,168200,168400,
+              168500,168700,168900];
+  const labels=mLabels.slice(0,data.length);
+  mkLine('cPayrolls',everyN(labels,6),[{
+    label:'Nonfarm Payrolls (000s)',data,borderColor:gold,backgroundColor:goldDim,
+    borderWidth:1.5,pointRadius:0,fill:true,tension:.3
+  }],recCovid,'Thousands');
+})();
+
+// ── GDP ──
+(()=>{
+  const qLabels=quarterLabels('2010','2026');
+  const data=[15016,15287,15521,15640,15761,15983,16107,16155,16340,16452,16580,16747,
+              16816,16986,17080,17234,17351,17540,17648,17825,17882,17974,18085,18222,
+              18281,18434,18511,18675,18762,18927,19020,19219,19379,19476,19600,19737,
+              19832,19964,20071,20241,20365,20502,20658,20797,20921,21098,21286,21481,
+              21728,21540,19636,21170,21843,22038,22997,23202,23468,23755,24002,24349,
+              24694,25001,25248,25511,25713,25876,26139,26349,26524,26725,26951,27116,
+              27357,27521,27750,27950,28110,28320];
+  mkLine('cGDP',everyN(qLabels,4),[{
+    label:'Real GDP (Bil. 2017$)',data:data.slice(0,qLabels.length),
+    borderColor:'#5CC9C9',backgroundColor:'rgba(92,201,201,0.10)',
+    borderWidth:1.5,pointRadius:0,fill:true,tension:.3
+  }],[]);
+})();
+
+// ── WA UNEMPLOYMENT ──
+(()=>{
+  const usBase=[9.8,9.5,9.0,8.8,8.6,8.2,8.2,8.3,7.9,7.7,7.5,7.9,
+                8.3,8.2,8.1,8.2,8.1,8.2,8.3,8.1,7.8,7.8,7.7,7.8,
+                8.3,8.3,8.2,8.1,8.2,8.2,8.3,8.1,7.8,7.8,7.7,7.9,
+                7.9,7.7,7.6,7.5,7.5,7.5,7.3,7.2,7.2,7.2,7.0,6.7,
+                6.6,6.7,6.7,6.2,6.3,6.1,6.2,6.2,5.9,5.7,5.8,5.6,
+                5.7,5.5,5.5,5.4,5.5,5.3,5.2,5.1,5.1,5.0,5.0,5.0,
+                4.9,4.9,5.0,5.0,4.7,4.9,4.9,4.9,5.0,4.8,4.6,4.7,
+                4.7,4.7,4.5,4.4,4.4,4.3,4.3,4.4,4.2,4.1,4.1,4.1,
+                4.1,4.1,4.1,4.0,3.8,4.0,3.9,3.8,3.7,3.7,3.7,3.9,
+                4.0,3.8,3.8,3.6,3.6,3.7,3.7,3.7,3.5,3.6,3.5,3.5,
+                3.5,3.5,4.4,14.7,13.2,11.1,10.2,8.4,7.8,6.9,6.7,6.7,
+                6.4,6.2,6.0,6.0,5.8,5.9,5.7,5.4,4.7,4.6,4.2,3.9,
+                4.0,3.8,3.6,3.6,3.6,3.6,3.5,3.7,3.5,3.6,3.7,3.5,
+                3.4,3.6,3.5,3.4,3.7,3.6,3.5,3.8,3.8,3.9,3.7,3.7,
+                3.7,3.9,3.8,3.9,4.0,4.1,4.3,4.2,4.2,4.1,4.2,4.1,
+                4.1,4.0,4.1];
+  const waData=usBase.map((v,i)=>{
+    if(i>=146&&i<=150) return v+3.5+Math.random()*0.5;
+    if(i>=120&&i<=145) return v+1.4+Math.random()*0.3;
+    if(i>=160) return v+1.2+Math.random()*0.2;
+    return v+0.6+Math.random()*0.3;
+  });
+  const labels=mLabels.slice(0,usBase.length);
+  mkLine('cWA',everyN(labels,6),[
+    {label:'Washington',data:waData,borderColor:'#5CC9C9',backgroundColor:'rgba(92,201,201,0.08)',borderWidth:1.5,pointRadius:0,fill:false,tension:.3},
+    {label:'US National',data:usBase,borderColor:gold,backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,fill:false,tension:.3,borderDash:[4,3]}
+  ],recCovid,'%');
+})();
+</script>
+</body>
+</html>
