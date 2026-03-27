@@ -1,707 +1,753 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Economic Pulse Dashboard — TJ Jammalamadaka</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Economic Pulse — TJ Jammalamadaka</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;900&family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* ━━━ TOKENS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 :root{
-  --bg:#07070E;--bg2:#0D0D1A;--bg3:#12121F;
-  --border:#1C1C30;--text:#EAE6DC;--muted:#6A6A80;--faint:#1a1a28;
-  --gold:#C8A84B;--gold-lt:#E2C97A;--gold-dim:rgba(200,168,75,0.10);
-  --red:#E05C5C;--green:#4ADE80;
-  --serif:'Cormorant Garamond',Georgia,serif;
-  --sans:'Syne',sans-serif;
-  --body:'DM Sans',sans-serif;
+  --bg:#0e0e0e;
+  --bg2:#161616;
+  --bg3:#1d1d1d;
+  --line:#ffffff12;
+  --line2:#ffffff20;
+  --lime:#c8ff00;
+  --lime-pale:rgba(200,255,0,.07);
+  --white:#f4f4f0;
+  --muted:rgba(244,244,240,.38);
+  --red:#ff3d2e;
+  --green:#22c55e;
+  --display:'Big Shoulders Display',sans-serif;
+  --mono:'IBM Plex Mono','Courier New',monospace;
 }
-html{scroll-behavior:smooth;font-size:16px}
-body{background:var(--bg);color:var(--text);font-family:var(--body);font-weight:300;line-height:1.7;overflow-x:hidden;cursor:none}
 
-/* noise */
-body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-  opacity:0.025}
+/* ━━━ RESET ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;overflow-x:hidden}
+body{
+  background:var(--bg);color:var(--white);
+  font-family:var(--mono);font-size:14px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
 
-/* cursor */
-#cur{position:fixed;top:0;left:0;width:10px;height:10px;background:var(--gold);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .2s,height .2s}
-#cur-r{position:fixed;top:0;left:0;width:36px;height:36px;border:1px solid rgba(200,168,75,.45);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%)}
-body:has(a:hover) #cur{width:16px;height:16px;background:var(--gold-lt)}
-body:has(a:hover) #cur-r{width:48px;height:48px;border-color:var(--gold)}
-body:has(button:hover) #cur{width:16px;height:16px}
+/* ━━━ CURSOR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+body{cursor:none}
+#c{position:fixed;width:6px;height:6px;background:var(--lime);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:transform .12s}
+#cr{position:fixed;width:28px;height:28px;border:1px solid rgba(200,255,0,.3);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%)}
 
-/* scrollbar */
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-track{background:var(--bg)}
-::-webkit-scrollbar-thumb{background:var(--faint);border-radius:2px}
-::-webkit-scrollbar-thumb:hover{background:var(--gold)}
+/* ━━━ NAV ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:500;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 48px;
+  border-bottom:1px solid transparent;
+  transition:border-color .3s,background .3s;
+}
+nav.s{background:rgba(14,14,14,.9);backdrop-filter:blur(14px);border-color:var(--line2)}
+.n-logo{
+  font-family:var(--display);font-weight:900;font-size:18px;
+  letter-spacing:.04em;color:var(--white);text-decoration:none;
+}
+.n-logo i{color:var(--lime);font-style:normal}
+.n-links{display:flex;gap:28px;list-style:none}
+.n-links a{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-decoration:none;transition:color .2s}
+.n-links a:hover,.n-links a:focus{color:var(--lime)}
+.n-cta{
+  font-family:var(--mono);font-size:11px;font-weight:500;
+  letter-spacing:.08em;text-transform:uppercase;
+  padding:8px 18px;background:var(--lime);color:#0e0e0e;
+  border-radius:2px;text-decoration:none;transition:opacity .2s;
+}
+.n-cta:hover{opacity:.85}
 
-/* NAV */
-nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:1.4rem 3.5rem;background:linear-gradient(to bottom,rgba(7,7,14,.95),transparent)}
-.nav-back{font-family:var(--sans);font-size:.7rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);text-decoration:none;transition:color .2s}
-.nav-back:hover{color:var(--gold-lt)}
-.nav-right{display:flex;gap:2rem;list-style:none}
-.nav-right a{font-family:var(--sans);font-size:.68rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);text-decoration:none;transition:color .2s}
-.nav-right a:hover{color:var(--text)}
+/* ━━━ HERO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.hero{
+  position:relative;min-height:100vh;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  padding:0 48px 52px;padding-top:100px;
+  overflow:hidden;
+}
+/* ECG canvas */
+#ecg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 
-/* HERO */
-.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:8rem 3.5rem 4rem;position:relative;overflow:hidden}
-.hero-grid{position:absolute;inset:0;pointer-events:none;
-  background-image:linear-gradient(to right,var(--faint) 1px,transparent 1px),linear-gradient(to bottom,var(--faint) 1px,transparent 1px);
-  background-size:80px 80px;
-  mask-image:radial-gradient(ellipse 80% 70% at 50% 50%,black 30%,transparent 100%);
-  opacity:.4}
-.hero-tag{font-family:var(--sans);font-size:.68rem;font-weight:600;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);margin-bottom:1.2rem;opacity:0;animation:fadeUp .5s ease forwards .1s}
-.hero-title{font-family:var(--serif);font-size:clamp(3rem,7vw,7rem);font-weight:300;line-height:1.0;margin-bottom:1.2rem;opacity:0;animation:fadeUp .6s ease forwards .3s}
-.hero-title em{font-style:italic;color:var(--gold)}
-.hero-desc{font-size:clamp(.9rem,1.3vw,1.05rem);color:var(--muted);max-width:600px;margin-bottom:2.5rem;opacity:0;animation:fadeUp .6s ease forwards .5s}
-.hero-actions{display:flex;gap:.8rem;flex-wrap:wrap;opacity:0;animation:fadeUp .6s ease forwards .7s}
-.btn{font-family:var(--sans);font-size:.68rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;padding:.8rem 1.8rem;border-radius:2px;transition:all .22s;display:inline-block}
-.btn-gold{background:var(--gold);color:var(--bg);border:1px solid var(--gold)}
-.btn-gold:hover{background:var(--gold-lt);transform:translateY(-2px)}
-.btn-outline{background:transparent;color:var(--text);border:1px solid var(--border)}
-.btn-outline:hover{border-color:var(--gold);color:var(--gold);transform:translateY(-2px)}
+/* Vertical text on the right */
+.hero-vert{
+  position:absolute;right:48px;top:50%;transform:translateY(-50%);
+  writing-mode:vertical-rl;
+  font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);user-select:none;
+}
 
-/* KPI STRIP */
-.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5px;background:var(--border);opacity:0;animation:fadeUp .6s ease forwards .9s}
-.kpi{background:var(--bg2);padding:1.8rem 2rem}
-.kpi-label{font-family:var(--sans);font-size:.6rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
-.kpi-val{font-family:var(--serif);font-size:2.4rem;font-weight:300;line-height:1;color:var(--text)}
-.kpi-sub{font-family:var(--sans);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;margin-top:.3rem}
-.kpi-sub.up{color:var(--green)}
-.kpi-sub.dn{color:var(--red)}
-.kpi-sub.neu{color:var(--muted)}
+/* Hero type block at the bottom */
+.hero-body{position:relative;z-index:2}
+.h-tag{
+  display:inline-flex;align-items:center;gap:10px;
+  font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--lime);margin-bottom:16px;
+}
+.h-tag::before{content:'';width:28px;height:1px;background:var(--lime)}
 
-hr.rule{border:none;border-top:1px solid var(--border);margin:0 3.5rem}
+.h-title{
+  font-family:var(--display);font-weight:900;
+  font-size:clamp(96px,14vw,192px);
+  line-height:.84;letter-spacing:.01em;
+  color:var(--white);
+  margin-bottom:0;
+}
+.h-title .stroke{
+  display:block;
+  color:transparent;
+  -webkit-text-stroke:1.5px var(--lime);
+}
+.h-title .normal{display:block}
 
-/* SECTIONS */
-section{padding:6rem 3.5rem;position:relative}
-.sec-header{display:flex;align-items:baseline;gap:1.2rem;margin-bottom:3.5rem}
-.sec-num{font-family:var(--serif);font-size:4.5rem;font-weight:300;line-height:1;color:var(--faint);user-select:none;flex-shrink:0}
-.sec-title{font-family:var(--serif);font-size:clamp(1.8rem,3.5vw,2.6rem);font-weight:300;line-height:1.1}
-.sec-title em{font-style:italic;color:var(--gold)}
+.hero-foot{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  margin-top:28px;position:relative;z-index:2;
+  border-top:1px solid var(--line2);
+  padding-top:24px;
+}
+.h-desc{
+  font-size:13px;color:var(--muted);max-width:400px;line-height:1.8;
+}
+.h-btns{display:flex;gap:10px;align-items:center;flex-shrink:0}
+.btn-l{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:11px 24px;border-radius:2px;
+  font-family:var(--mono);font-size:11px;font-weight:500;
+  letter-spacing:.07em;text-transform:uppercase;text-decoration:none;
+  transition:all .2s;border:none;cursor:none;
+}
+.btn-lime{background:var(--lime);color:#0e0e0e}
+.btn-lime:hover{opacity:.88}
+.btn-ghost{background:transparent;color:var(--white);border:1px solid var(--line2)}
+.btn-ghost:hover{border-color:rgba(200,255,0,.4);color:var(--lime)}
 
-/* CHART GRID */
-.chart-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.5px;background:var(--border)}
-.chart-card{background:var(--bg);padding:2rem}
-.chart-card.wide{grid-column:span 2}
-.chart-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem}
-.chart-name{font-family:var(--serif);font-size:1.3rem;font-weight:400}
-.chart-meta{font-family:var(--sans);font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);text-align:right}
-.chart-wrap{position:relative;height:200px}
-.chart-card.wide .chart-wrap{height:260px}
+/* ━━━ TICKER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.ticker{
+  border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);
+  height:44px;overflow:hidden;display:flex;align-items:center;
+  background:var(--bg2);position:relative;
+}
+.ticker::before,.ticker::after{
+  content:'';position:absolute;top:0;bottom:0;width:80px;z-index:2;
+}
+.ticker::before{left:0;background:linear-gradient(to right,var(--bg2),transparent)}
+.ticker::after{right:0;background:linear-gradient(to left,var(--bg2),transparent)}
+.t-label{
+  flex-shrink:0;background:var(--lime);color:#0e0e0e;
+  font-weight:500;font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  padding:0 16px;height:100%;display:flex;align-items:center;gap:6px;z-index:3;
+}
+.t-label::before{content:'●';font-size:7px;animation:blink 1.4s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.t-track{display:flex;animation:tkr 30s linear infinite;white-space:nowrap}
+.t-track:hover{animation-play-state:paused}
+@keyframes tkr{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.t-item{
+  display:flex;align-items:center;gap:10px;
+  padding:0 28px;font-size:12px;
+  border-right:1px solid var(--line);
+}
+.t-id{color:var(--muted);font-size:10px;letter-spacing:.06em}
+.t-v{font-weight:500;color:var(--white)}
+.t-d{font-size:11px}
+.tp{color:var(--green)}.tn{color:var(--red)}
 
-/* RECESSION BAND helper text */
-.recession-note{font-family:var(--sans);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:.8rem;display:flex;align-items:center;gap:.5rem}
-.recession-swatch{width:16px;height:8px;background:rgba(224,92,92,.18);border:1px solid rgba(224,92,92,.35);display:inline-block;flex-shrink:0}
+/* ━━━ CHART SECTION ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.chart-section{
+  border-bottom:1px solid var(--line2);
+}
+.chart-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:24px 48px;border-bottom:1px solid var(--line);
+  flex-wrap:wrap;gap:16px;
+}
+.chart-title-wrap h2{
+  font-family:var(--display);font-weight:900;
+  font-size:clamp(28px,4vw,42px);letter-spacing:.02em;line-height:1;
+  color:var(--white);
+}
+.chart-title-wrap p{font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:.04em}
+.chart-tabs{display:flex;gap:2px;flex-wrap:wrap}
+.tab{
+  font-family:var(--mono);font-size:11px;font-weight:500;
+  letter-spacing:.06em;text-transform:uppercase;
+  padding:8px 16px;border-radius:1px;border:1px solid var(--line2);
+  background:none;color:var(--muted);cursor:none;transition:all .2s;
+}
+.tab:hover{color:var(--white);border-color:var(--line2)}
+.tab.active{background:var(--lime);color:#0e0e0e;border-color:var(--lime)}
+.chart-canvas-wrap{
+  position:relative;height:340px;
+  padding:0;
+}
+#mainChart{display:block;width:100%;height:100%;cursor:crosshair}
+.c-tip{
+  position:absolute;background:var(--white);color:var(--bg);
+  font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:2px;
+  pointer-events:none;opacity:0;white-space:nowrap;z-index:10;
+  transition:opacity .12s;
+}
+.chart-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 48px;border-top:1px solid var(--line);
+  font-size:11px;color:var(--muted);
+}
+.chart-legend{display:flex;align-items:center;gap:20px}
+.leg-item{display:flex;align-items:center;gap:7px}
+.leg-dot{width:8px;height:8px;border-radius:50%}
 
-/* FINDINGS */
-.findings-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5px;background:var(--border)}
-.finding{background:var(--bg2);padding:2.2rem}
-.finding-num{font-family:var(--serif);font-size:3rem;font-weight:300;color:var(--gold);line-height:1;margin-bottom:.8rem}
-.finding-title{font-family:var(--serif);font-size:1.2rem;font-weight:400;margin-bottom:.6rem}
-.finding-body{font-size:.85rem;color:var(--muted);line-height:1.7}
+/* ━━━ FEATURES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.features{}
+.feat-row{
+  display:grid;grid-template-columns:200px 1fr 1fr;
+  align-items:start;
+  padding:40px 48px;
+  border-bottom:1px solid var(--line);
+  gap:48px;
+  transition:background .2s;
+  cursor:default;
+}
+.feat-row:hover{background:var(--bg2)}
+.feat-row:last-child{border-bottom:none}
+.feat-num{
+  font-family:var(--display);font-weight:900;
+  font-size:72px;line-height:1;letter-spacing:.02em;
+  color:rgba(200,255,0,.12);
+  align-self:center;
+}
+.feat-main{}
+.feat-badge{
+  display:inline-block;font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  padding:2px 8px;background:var(--lime);color:#0e0e0e;border-radius:1px;
+  margin-bottom:10px;
+}
+.feat-title{
+  font-family:var(--display);font-weight:600;
+  font-size:clamp(22px,2.5vw,30px);letter-spacing:.02em;
+  color:var(--white);line-height:1.1;margin-bottom:0;
+}
+.feat-desc{font-size:13px;color:var(--muted);line-height:1.8;align-self:center}
 
-/* PIPELINE */
-.pipeline{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5px;background:var(--border)}
-.pipe-step{background:var(--bg);padding:2rem}
-.pipe-icon{font-size:1.4rem;margin-bottom:1rem}
-.pipe-stage{font-family:var(--sans);font-size:.6rem;letter-spacing:.25em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem}
-.pipe-name{font-family:var(--serif);font-size:1.15rem;font-weight:400;margin-bottom:.5rem}
-.pipe-desc{font-size:.82rem;color:var(--muted);line-height:1.6}
+/* ━━━ SETUP ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.setup{
+  display:grid;grid-template-columns:1fr 1fr;
+  border-top:1px solid var(--line2);
+  min-height:400px;
+}
+.setup-left{
+  padding:64px 48px;
+  border-right:1px solid var(--line2);
+  display:flex;flex-direction:column;justify-content:space-between;
+}
+.setup-left h2{
+  font-family:var(--display);font-weight:900;
+  font-size:clamp(48px,6vw,80px);line-height:.9;
+  letter-spacing:.02em;color:var(--white);
+  margin-bottom:28px;
+}
+.setup-left h2 em{color:var(--lime);font-style:normal}
+.setup-left p{font-size:13px;color:var(--muted);line-height:1.8;max-width:340px;margin-bottom:36px}
+.setup-btns{display:flex;gap:10px;flex-wrap:wrap}
+.setup-right{padding:48px;display:flex;align-items:center}
+.code-blk{background:var(--bg2);border:1px solid var(--line2);border-radius:4px;overflow:hidden;width:100%}
+.code-top{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 16px;border-bottom:1px solid var(--line);
+  font-size:10px;color:var(--muted);
+}
+.dots{display:flex;gap:5px}
+.d{width:9px;height:9px;border-radius:50%}
+.d1{background:#ff5f57}.d2{background:#febc2e}.d3{background:#28c840}
+.code-blk pre{
+  padding:20px 20px;font-size:12px;line-height:1.9;
+  color:rgba(244,244,240,.7);overflow-x:auto;
+}
+.kw{color:#7dd3fc}.cf{color:var(--lime)}.cm{color:#334155;font-style:italic}
 
-/* TECH */
-.tech-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5px;background:var(--border)}
-.tech-item{background:var(--bg2);padding:1.8rem 2rem;display:flex;align-items:center;gap:1rem}
-.tech-name{font-family:var(--serif);font-size:1.1rem;font-weight:400}
-.tech-role{font-family:var(--sans);font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+/* ━━━ PIPELINE STRIP ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.pipe{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);
+  background:var(--bg2);
+}
+.p-cell{
+  padding:32px 36px;border-right:1px solid var(--line);
+  position:relative;transition:background .2s;
+}
+.p-cell:last-child{border-right:none}
+.p-cell:hover{background:var(--bg3)}
+.p-step{
+  font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--lime);margin-bottom:10px;font-weight:500;
+  display:flex;align-items:center;gap:8px;
+}
+.p-step::before{content:attr(data-n);color:rgba(200,255,0,.3)}
+.p-name{font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:.02em;color:var(--white);margin-bottom:8px;line-height:1.1}
+.p-detail{font-size:11.5px;color:var(--muted);line-height:1.65}
 
-/* SCROLL REVEAL */
-.reveal{opacity:0;transform:translateY(24px);transition:opacity .65s ease,transform .65s ease}
-.reveal.vis{opacity:1;transform:translateY(0)}
+/* ━━━ FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+footer{
+  padding:28px 48px;
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:11px;color:var(--muted);flex-wrap:wrap;gap:12px;
+  border-top:1px solid var(--line);
+}
+footer a{color:var(--muted);text-decoration:none;transition:color .2s}
+footer a:hover{color:var(--lime)}
+.f-logo{font-family:var(--display);font-weight:900;font-size:20px;letter-spacing:.04em;color:rgba(244,244,240,.08)}
 
-/* FOOTER */
-footer{padding:2rem 3.5rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
-.footer-copy{font-family:var(--sans);font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
-.footer-links{display:flex;gap:1.5rem}
-.footer-links a{font-family:var(--sans);font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);text-decoration:none;transition:color .2s}
-.footer-links a:hover{color:var(--gold)}
+/* ━━━ REVEAL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.rev{opacity:0;transform:translateY(24px);transition:opacity .65s ease,transform .65s cubic-bezier(.16,1,.3,1)}
+.rev.on{opacity:1;transform:none}
+.d1{transition-delay:.08s}.d2{transition-delay:.16s}.d3{transition-delay:.24s}.d4{transition-delay:.32s}
 
-@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-
+/* ━━━ RESPONSIVE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 @media(max-width:900px){
-  nav{padding:1.2rem 1.5rem}
-  .hero{padding:7rem 1.5rem 3rem}
-  section{padding:4rem 1.5rem}
-  hr.rule{margin:0 1.5rem}
-  .kpi-strip{grid-template-columns:repeat(2,1fr)}
-  .chart-grid{grid-template-columns:1fr}
-  .chart-card.wide{grid-column:span 1}
-  .findings-grid{grid-template-columns:1fr}
-  .pipeline{grid-template-columns:repeat(2,1fr)}
-  .tech-grid{grid-template-columns:1fr}
-  footer{padding:1.5rem}
-}
-@media(max-width:500px){
-  .kpi-strip{grid-template-columns:1fr}
-  .pipeline{grid-template-columns:1fr}
-  .nav-right{display:none}
+  nav{padding:14px 20px}.n-links{display:none}
+  .hero,.hero-foot{padding-left:20px;padding-right:20px}
+  .chart-header,.chart-footer{padding-left:20px;padding-right:20px}
+  .chart-tabs{gap:4px}
+  .feat-row{grid-template-columns:1fr;gap:16px;padding:28px 20px}
+  .feat-num{font-size:40px}
+  .pipe{grid-template-columns:1fr 1fr}
+  .p-cell{border-bottom:1px solid var(--line)}
+  .setup{grid-template-columns:1fr}
+  .setup-left{padding:40px 20px;border-right:none;border-bottom:1px solid var(--line2)}
+  .setup-right{padding:20px}
+  footer{padding:24px 20px;flex-direction:column;text-align:center}
 }
 </style>
 </head>
 <body>
-
-<div id="cur"></div>
-<div id="cur-r"></div>
+<div id="c"></div>
+<div id="cr"></div>
 
 <!-- NAV -->
-<nav>
-  <a href="https://tarang-tj.github.io/" class="nav-back">← TJ_</a>
-  <ul class="nav-right">
-    <li><a href="#visualizations">Charts</a></li>
-    <li><a href="#findings">Findings</a></li>
-    <li><a href="#pipeline">Pipeline</a></li>
-    <li><a href="https://github.com/tarang-tj/economic-pulse-dashboard" target="_blank" rel="noopener">GitHub ↗</a></li>
+<nav id="nav">
+  <a class="n-logo" href="#"><i>EP</i>D</a>
+  <ul class="n-links">
+    <li><a href="#chart-sec">Data</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#setup">Setup</a></li>
   </ul>
+  <a class="n-cta" href="https://github.com/tarang-tj/economic-pulse-dashboard" target="_blank">GitHub ↗</a>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-grid"></div>
-  <p class="hero-tag">Python · ETL · Macroeconomics · 2026</p>
-  <h1 class="hero-title">Economic <em>Pulse</em><br>Dashboard</h1>
-  <p class="hero-desc">An end-to-end Python pipeline that fetches, cleans, and visualizes 7 key US macroeconomic indicators from the FRED API — with statistical trend detection, recession shading, and interactive charts.</p>
-  <div class="hero-actions">
-    <a href="#visualizations" class="btn btn-gold">Explore Data</a>
-    <a href="https://github.com/tarang-tj/economic-pulse-dashboard" target="_blank" rel="noopener" class="btn btn-outline">View Code ↗</a>
+  <canvas id="ecg"></canvas>
+  <div class="hero-vert">US Macroeconomic Intelligence · FRED API · Python ETL</div>
+
+  <div class="hero-body">
+    <div class="h-tag">8 indicators · ARIMA forecasting · Sahm Rule · AI briefing</div>
+    <h1 class="h-title">
+      <span class="normal">ECONOMIC</span>
+      <span class="stroke">PULSE</span>
+    </h1>
+  </div>
+
+  <div class="hero-foot">
+    <p class="h-desc">
+      An end-to-end Python data pipeline — FRED API extraction, pandas ETL,
+      statistical trend detection, recession early-warning signals, and
+      AI-generated macro briefings. Scroll to explore the data.
+    </p>
+    <div class="h-btns">
+      <a class="btn-l btn-lime" href="#chart-sec">↓ Explore the Data</a>
+      <a class="btn-l btn-ghost" href="https://github.com/tarang-tj/economic-pulse-dashboard" target="_blank">GitHub</a>
+    </div>
   </div>
 </section>
 
-<!-- KPI STRIP -->
-<div class="kpi-strip">
-  <div class="kpi">
-    <div class="kpi-label">Unemployment Rate</div>
-    <div class="kpi-val">4.1<span style="font-size:1.4rem">%</span></div>
-    <div class="kpi-sub neu">US Civilian · Mar 2025</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">CPI Inflation (YoY)</div>
-    <div class="kpi-val">3.2<span style="font-size:1.4rem">%</span></div>
-    <div class="kpi-sub dn">↓ from 3.5% prior month</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">Federal Funds Rate</div>
-    <div class="kpi-val">5.3<span style="font-size:1.4rem">%</span></div>
-    <div class="kpi-sub neu">Target range upper bound</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">Real GDP Growth</div>
-    <div class="kpi-val">2.4<span style="font-size:1.4rem">%</span></div>
-    <div class="kpi-sub up">↑ Annualized Q4 2024</div>
+<!-- TICKER -->
+<div class="ticker">
+  <div class="t-label">LIVE</div>
+  <div style="overflow:hidden;flex:1">
+    <div class="t-track" id="tTrack">
+      <!-- doubled for loop — injected by JS -->
+    </div>
   </div>
 </div>
 
-<hr class="rule"/>
-
-<!-- CHARTS -->
-<section id="visualizations">
-  <div class="sec-header reveal">
-    <span class="sec-num">01</span>
-    <h2 class="sec-title">Data <em>Visualizations</em></h2>
+<!-- CHART SECTION -->
+<section class="chart-section rev" id="chart-sec">
+  <div class="chart-header">
+    <div class="chart-title-wrap">
+      <h2>The Data</h2>
+      <p>Click an indicator. Move your cursor over the chart.</p>
+    </div>
+    <div class="chart-tabs" id="tabs"></div>
   </div>
-
-  <div class="chart-grid reveal">
-
-    <!-- Unemployment -->
-    <div class="chart-card">
-      <div class="chart-head">
-        <div class="chart-name">Unemployment Rate</div>
-        <div class="chart-meta">FRED: UNRATE<br>US Civilian · Monthly</div>
-      </div>
-      <div class="chart-wrap"><canvas id="cUnemployment"></canvas></div>
-      <div class="recession-note"><span class="recession-swatch"></span>NBER recession periods shaded</div>
+  <div class="chart-canvas-wrap">
+    <canvas id="mainChart"></canvas>
+    <div class="c-tip" id="cTip"></div>
+  </div>
+  <div class="chart-footer">
+    <div class="chart-legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#c8ff00"></div><span>Series value</span></div>
+      <div class="leg-item"><div class="leg-dot" style="background:rgba(255,61,46,.4);border-radius:1px;width:16px;height:8px"></div><span>NBER recession</span></div>
     </div>
-
-    <!-- Fed Funds -->
-    <div class="chart-card">
-      <div class="chart-head">
-        <div class="chart-name">Federal Funds Rate</div>
-        <div class="chart-meta">FRED: FEDFUNDS<br>Target Rate · Monthly</div>
-      </div>
-      <div class="chart-wrap"><canvas id="cFedFunds"></canvas></div>
-      <div class="recession-note"><span class="recession-swatch"></span>NBER recession periods shaded</div>
-    </div>
-
-    <!-- CPI -->
-    <div class="chart-card">
-      <div class="chart-head">
-        <div class="chart-name">CPI — Inflation</div>
-        <div class="chart-meta">FRED: CPIAUCSL<br>All Items · YoY %</div>
-      </div>
-      <div class="chart-wrap"><canvas id="cCPI"></canvas></div>
-      <div class="recession-note"><span class="recession-swatch"></span>NBER recession periods shaded</div>
-    </div>
-
-    <!-- Job Openings -->
-    <div class="chart-card">
-      <div class="chart-head">
-        <div class="chart-name">Job Openings (JOLTS)</div>
-        <div class="chart-meta">FRED: JTSJOL<br>Thousands · Monthly</div>
-      </div>
-      <div class="chart-wrap"><canvas id="cJolts"></canvas></div>
-      <div class="recession-note"><span class="recession-swatch"></span>NBER recession periods shaded</div>
-    </div>
-
-    <!-- Nonfarm Payrolls WIDE -->
-    <div class="chart-card wide">
-      <div class="chart-head">
-        <div class="chart-name">Total Nonfarm Payrolls</div>
-        <div class="chart-meta">FRED: PAYEMS · Thousands of Persons · Monthly · 2010–2025</div>
-      </div>
-      <div class="chart-wrap"><canvas id="cPayrolls"></canvas></div>
-      <div class="recession-note"><span class="recession-swatch"></span>COVID-19 shock (2020) and recovery clearly visible</div>
-    </div>
-
-    <!-- GDP -->
-    <div class="chart-card">
-      <div class="chart-head">
-        <div class="chart-name">Real GDP</div>
-        <div class="chart-meta">FRED: GDPC1<br>Billions 2017$ · Quarterly</div>
-      </div>
-      <div class="chart-wrap"><canvas id="cGDP"></canvas></div>
-      <div class="recession-note"><span class="recession-swatch"></span>NBER recession periods shaded</div>
-    </div>
-
-    <!-- WA Unemployment -->
-    <div class="chart-card">
-      <div class="chart-head">
-        <div class="chart-name">WA State Unemployment</div>
-        <div class="chart-meta">FRED: WAUR<br>Washington State · Monthly</div>
-      </div>
-      <div class="chart-wrap"><canvas id="cWA"></canvas></div>
-      <div class="recession-note">vs US national rate comparison</div>
-    </div>
-
+    <span>Source: FRED, Federal Reserve Bank of St. Louis</span>
   </div>
 </section>
-
-<hr class="rule"/>
-
-<!-- FINDINGS -->
-<section id="findings">
-  <div class="sec-header reveal">
-    <span class="sec-num">02</span>
-    <h2 class="sec-title">Key <em>Findings</em></h2>
-  </div>
-  <div class="findings-grid reveal">
-    <div class="finding">
-      <div class="finding-num">r=0.91</div>
-      <div class="finding-title">Fed Rate vs Inflation Lag</div>
-      <div class="finding-body">Correlation analysis reveals Fed Funds Rate movements precede CPI changes by approximately 9–12 months — consistent with monetary policy transmission theory.</div>
-    </div>
-    <div class="finding">
-      <div class="finding-num">−20M</div>
-      <div class="finding-title">COVID Payroll Shock</div>
-      <div class="finding-body">April 2020 saw the largest single-month payroll collapse in recorded US history. Full recovery to pre-pandemic levels took until mid-2022, roughly 26 months.</div>
-    </div>
-    <div class="finding">
-      <div class="finding-num">+1.2pp</div>
-      <div class="finding-title">WA Premium</div>
-      <div class="finding-body">Washington State unemployment tracked 1–1.5 percentage points above the national rate during the 2023–2024 tech sector downturn, driven by Seattle-area layoffs.</div>
-    </div>
-    <div class="finding">
-      <div class="finding-num">9.1%</div>
-      <div class="finding-title">40-Year CPI Peak</div>
-      <div class="finding-body">June 2022 CPI hit 9.1% YoY — the highest since 1981. The subsequent 18-month disinflation to ~3% tracked closely with Fed rate hikes, visible in the correlation matrix.</div>
-    </div>
-    <div class="finding">
-      <div class="finding-num">10M+</div>
-      <div class="finding-title">Job Openings Peak</div>
-      <div class="finding-body">JOLTS data peaked at over 12 million openings in early 2022 — nearly 2 openings per unemployed worker — before declining steadily as hiring cooled through 2023–24.</div>
-    </div>
-    <div class="finding">
-      <div class="finding-num">p&lt;.10</div>
-      <div class="finding-title">Trend Detection Threshold</div>
-      <div class="finding-body">Short-term trends are flagged only when the 6-month rolling linear regression is both statistically significant (p&lt;0.10) and explains at least 30% of variance (R²≥0.3).</div>
-    </div>
-  </div>
-</section>
-
-<hr class="rule"/>
 
 <!-- PIPELINE -->
-<section id="pipeline">
-  <div class="sec-header reveal">
-    <span class="sec-num">03</span>
-    <h2 class="sec-title">ETL <em>Pipeline</em></h2>
+<div class="pipe rev">
+  <div class="p-cell">
+    <div class="p-step" data-n="01">Extract</div>
+    <div class="p-name">FRED REST API</div>
+    <div class="p-detail">8 time series · 12-hour local cache · graceful retry logic</div>
   </div>
-  <div class="pipeline reveal">
-    <div class="pipe-step">
-      <div class="pipe-icon">⬇</div>
-      <div class="pipe-stage">Stage 01</div>
-      <div class="pipe-name">Extract</div>
-      <div class="pipe-desc">Pulls 7 macroeconomic time series from the FRED REST API with local 12-hour JSON caching to avoid redundant requests during development.</div>
-    </div>
-    <div class="pipe-step">
-      <div class="pipe-icon">⚙</div>
-      <div class="pipe-stage">Stage 02</div>
-      <div class="pipe-name">Transform</div>
-      <div class="pipe-desc">Cleans missing values, casts types, computes YoY changes distinguishing rate series (pp change) from index/level series (% change).</div>
-    </div>
-    <div class="pipe-step">
-      <div class="pipe-icon">📐</div>
-      <div class="pipe-stage">Stage 03</div>
-      <div class="pipe-name">Analyze</div>
-      <div class="pipe-desc">Detects short-term trends via scipy linear regression with significance gating. Builds a cross-indicator correlation matrix and flags NBER recession periods.</div>
-    </div>
-    <div class="pipe-step">
-      <div class="pipe-icon">📊</div>
-      <div class="pipe-stage">Stage 04</div>
-      <div class="pipe-name">Load</div>
-      <div class="pipe-desc">Renders an interactive Streamlit dashboard with Plotly time series, recession shading, rolling statistics, and a full correlation heatmap.</div>
-    </div>
+  <div class="p-cell">
+    <div class="p-step" data-n="02">Transform</div>
+    <div class="p-name">pandas ETL</div>
+    <div class="p-detail">Missing value imputation · YoY Δ · rolling statistics</div>
   </div>
-</section>
+  <div class="p-cell">
+    <div class="p-step" data-n="03">Analyse</div>
+    <div class="p-name">scipy + statsmodels</div>
+    <div class="p-detail">Trend regression · Sahm Rule · ARIMA(1,1,1) · health score</div>
+  </div>
+  <div class="p-cell">
+    <div class="p-step" data-n="04">Visualise</div>
+    <div class="p-name">Plotly Dashboard</div>
+    <div class="p-detail">Interactive charts · animated gauge · AI narrative panel</div>
+  </div>
+</div>
 
-<hr class="rule"/>
-
-<!-- TECH STACK -->
-<section id="tech">
-  <div class="sec-header reveal">
-    <span class="sec-num">04</span>
-    <h2 class="sec-title">Tech <em>Stack</em></h2>
+<!-- FEATURES -->
+<section id="features">
+  <div class="feat-row rev">
+    <div class="feat-num">01</div>
+    <div class="feat-main">
+      <div class="feat-badge">New in v2</div>
+      <h3 class="feat-title">Economic<br>Health Score</h3>
+    </div>
+    <p class="feat-desc">A 0–100 composite gauge synthesising all 7 weighted indicators — normalised against 10 years of historical range, direction-adjusted, and colour-banded into four health states. One number that captures the macro picture.</p>
   </div>
-  <div class="tech-grid reveal">
-    <div class="tech-item">
-      <div>
-        <div class="tech-name">Python 3.11</div>
-        <div class="tech-role">Core language</div>
-      </div>
+  <div class="feat-row rev">
+    <div class="feat-num">02</div>
+    <div class="feat-main">
+      <div class="feat-badge">New in v2</div>
+      <h3 class="feat-title">ARIMA<br>Forecasting</h3>
     </div>
-    <div class="tech-item">
-      <div>
-        <div class="tech-name">pandas</div>
-        <div class="tech-role">Data cleaning · resampling · rolling stats</div>
-      </div>
+    <p class="feat-desc">6-month ARIMA(1,1,1) predictions across every indicator, with 80% and 95% confidence interval bands. Fitted via statsmodels with AIC reported. Turns a retrospective view into a forward-looking one.</p>
+  </div>
+  <div class="feat-row rev">
+    <div class="feat-num">03</div>
+    <div class="feat-main">
+      <div class="feat-badge">New in v2</div>
+      <h3 class="feat-title">Sahm Rule<br>Tracker</h3>
     </div>
-    <div class="tech-item">
-      <div>
-        <div class="tech-name">FRED API</div>
-        <div class="tech-role">Federal Reserve economic data</div>
-      </div>
+    <p class="feat-desc">Claudia Sahm's recession early-warning indicator — triggered when the 3-month average unemployment rate rises ≥ 0.5pp above its 12-month minimum. Accurate to every US recession since 1970.</p>
+  </div>
+  <div class="feat-row rev">
+    <div class="feat-num">04</div>
+    <div class="feat-main">
+      <div class="feat-badge">New in v2</div>
+      <h3 class="feat-title">AI Economic<br>Briefing</h3>
     </div>
-    <div class="tech-item">
-      <div>
-        <div class="tech-name">scipy</div>
-        <div class="tech-role">Linear regression · trend detection</div>
-      </div>
+    <p class="feat-desc">On each data refresh, the Claude API generates a 3-sentence plain-English macro briefing citing the actual numbers — so the dashboard explains itself. Optionally enabled via an Anthropic API key.</p>
+  </div>
+  <div class="feat-row rev">
+    <div class="feat-num">05</div>
+    <div class="feat-main">
+      <h3 class="feat-title">Trend<br>Detection</h3>
     </div>
-    <div class="tech-item">
-      <div>
-        <div class="tech-name">Plotly</div>
-        <div class="tech-role">Interactive time series charts</div>
-      </div>
-    </div>
-    <div class="tech-item">
-      <div>
-        <div class="tech-name">Streamlit</div>
-        <div class="tech-role">Dashboard framework · deployment</div>
-      </div>
-    </div>
+    <p class="feat-desc">Linear regression over a rolling 6-month window — flagged only when statistically significant (p &lt; 0.10, R² ≥ 0.30). Suppresses noise so signals actually mean something. YoY expressed as pp-change for rates, % for levels.</p>
   </div>
 </section>
 
-<hr class="rule"/>
+<!-- SETUP -->
+<div class="setup rev" id="setup">
+  <div class="setup-left">
+    <div>
+      <h2>Up in<br><em>five</em><br>steps.</h2>
+      <p>Python 3.11+. A free FRED API key from the St. Louis Fed. Anthropic key is optional — it enables the AI briefing panel.</p>
+    </div>
+    <div class="setup-btns">
+      <a class="btn-l btn-lime" href="https://github.com/tarang-tj/economic-pulse-dashboard" target="_blank">↗ View on GitHub</a>
+    </div>
+  </div>
+  <div class="setup-right">
+    <div class="code-blk">
+      <div class="code-top">
+        <div class="dots"><div class="d d1"></div><div class="d d2"></div><div class="d d3"></div></div>
+        bash
+      </div>
+      <pre><span class="cm"># 1. Clone the repo</span>
+<span class="kw">git</span> clone https://github.com/tarang-tj/economic-pulse-dashboard.git
+<span class="kw">cd</span> economic-pulse-dashboard
 
+<span class="cm"># 2. Install (statsmodels + anthropic included)</span>
+<span class="kw">pip</span> install <span class="cf">-r</span> requirements.txt
+
+<span class="cm"># 3. Get free FRED key at fred.stlouisfed.org</span>
+
+<span class="cm"># 4. Add your keys</span>
+<span class="kw">cp</span> .env.example .env
+<span class="cm"># FRED_API_KEY=...  (required)</span>
+<span class="cm"># ANTHROPIC_API_KEY=...  (optional)</span>
+
+<span class="cm"># 5. Run</span>
+<span class="kw">python</span> <span class="cf">pipeline.py</span> && <span class="kw">python</span> <span class="cf">app.py</span></pre>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
 <footer>
-  <p class="footer-copy">Economic Pulse Dashboard · Tarang (TJ) Jammalamadaka · 2026</p>
-  <div class="footer-links">
-    <a href="https://tarang-tj.github.io/">Portfolio</a>
-    <a href="https://github.com/tarang-tj/economic-pulse-dashboard" target="_blank" rel="noopener">GitHub ↗</a>
-    <a href="https://www.linkedin.com/in/tarang-tj/" target="_blank" rel="noopener">LinkedIn ↗</a>
-  </div>
+  <span>Built by <a href="https://github.com/tarang-tj" target="_blank">Tarang (TJ) Jammalamadaka</a> · Data: <a href="https://fred.stlouisfed.org" target="_blank">FRED, St. Louis Fed</a></span>
+  <span class="f-logo">EPD</span>
+  <span><a href="https://github.com/tarang-tj/economic-pulse-dashboard" target="_blank">GitHub</a></span>
 </footer>
 
 <script>
-// ── CURSOR ──
-const cur=document.getElementById('cur'),curR=document.getElementById('cur-r');
+/* ━━━ CURSOR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+const dot=document.getElementById('c'),ring=document.getElementById('cr');
 let mx=0,my=0,rx=0,ry=0;
-document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY});
-(function loop(){
-  cur.style.left=mx+'px';cur.style.top=my+'px';
-  rx+=(mx-rx)*.1;ry+=(my-ry)*.1;
-  curR.style.left=rx+'px';curR.style.top=ry+'px';
-  requestAnimationFrame(loop);
-})();
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;dot.style.left=mx+'px';dot.style.top=my+'px'});
+(function lp(){rx+=(mx-rx)*.11;ry+=(my-ry)*.11;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(lp)})();
+document.querySelectorAll('a,button,.feat-row,.p-cell,.tab').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{dot.style.transform='translate(-50%,-50%) scale(2.5)';ring.style.width='44px';ring.style.height='44px';ring.style.borderColor='rgba(200,255,0,.5)'});
+  el.addEventListener('mouseleave',()=>{dot.style.transform='translate(-50%,-50%) scale(1)';ring.style.width='28px';ring.style.height='28px';ring.style.borderColor='rgba(200,255,0,.3)'});
+});
 
-// ── SCROLL REVEAL ──
-const revEls=document.querySelectorAll('.reveal');
-new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');}}),{threshold:.08}).observe||0;
-const ro=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('vis')}),{threshold:.08});
-revEls.forEach(el=>ro.observe(el));
-
-// ── CHART DEFAULTS ──
-const gold='#C8A84B',goldDim='rgba(200,168,75,0.15)',muted='#6A6A80',text='#EAE6DC';
-const recessionColor='rgba(224,92,92,0.10)';
-Chart.defaults.color=muted;
-Chart.defaults.borderColor='rgba(255,255,255,0.05)';
-Chart.defaults.font.family="'DM Sans', sans-serif";
-Chart.defaults.font.size=11;
-
-// Recession plugin (vertical bands)
-const recessionPlugin={
-  id:'recession',
-  beforeDraw(chart,args,opts){
-    if(!opts||!opts.bands)return;
-    const{ctx,chartArea:{left,right,top,bottom},scales:{x}}=chart;
-    ctx.save();
-    opts.bands.forEach(([s,e])=>{
-      const x0=x.getPixelForValue(s),x1=x.getPixelForValue(e);
-      ctx.fillStyle=recessionColor;
-      ctx.fillRect(Math.max(left,x0),top,Math.min(right,x1)-Math.max(left,x0),bottom-top);
+/* ━━━ ECG HERO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+(()=>{
+  const c=document.getElementById('ecg'),ctx=c.getContext('2d');
+  let W,H,t=0;
+  const resize=()=>{W=c.width=c.offsetWidth;H=c.height=c.offsetHeight};
+  resize();window.addEventListener('resize',resize);
+  function gauss(ph,mu,sig,amp){return amp*Math.exp(-((ph-mu)**2)/(2*sig*sig))}
+  function ecgY(x,off){
+    const p=280,ph=((x+off)%p+p)%p,m=H*.62;
+    const P  = gauss(ph, 50, 9,  7);
+    const Q  =-gauss(ph, 80, 3,  12);
+    const R  = gauss(ph, 86, 4,  H*.32);
+    const S  =-gauss(ph, 93, 3,  16);
+    const T  = gauss(ph,128, 18, 20);
+    return m - P - Q - R - S - T;
+  }
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const off=t*1.1;
+    // Two lines — main + ghost
+    [[0,.55,1.5],[H*.18,.1,.8]].forEach(([yOff,alpha,lw])=>{
+      ctx.beginPath();
+      for(let x=0;x<=W;x++){const y=ecgY(x,off)+yOff;x===0?ctx.moveTo(x,y):ctx.lineTo(x,y)}
+      const g=ctx.createLinearGradient(0,0,W,0);
+      g.addColorStop(0,'rgba(200,255,0,0)');
+      g.addColorStop(.1,`rgba(200,255,0,${alpha})`);
+      g.addColorStop(.9,`rgba(200,255,0,${alpha})`);
+      g.addColorStop(1,'rgba(200,255,0,0)');
+      ctx.strokeStyle=g;ctx.lineWidth=lw;ctx.stroke();
     });
-    ctx.restore();
+    // Lead dot
+    const lx=W*.82,ly=ecgY(lx,off);
+    const gl=ctx.createRadialGradient(lx,ly,0,lx,ly,20);
+    gl.addColorStop(0,'rgba(200,255,0,.45)');gl.addColorStop(1,'rgba(200,255,0,0)');
+    ctx.beginPath();ctx.arc(lx,ly,20,0,Math.PI*2);ctx.fillStyle=gl;ctx.fill();
+    ctx.beginPath();ctx.arc(lx,ly,2.5,0,Math.PI*2);ctx.fillStyle='#c8ff00';ctx.fill();
+    t++;requestAnimationFrame(draw);
   }
+  draw();
+})();
+
+/* ━━━ TICKER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+const TDATA=[
+  {id:'UNRATE',v:'3.7%',d:'+0.1pp',p:false},{id:'PAYEMS',v:'158,982K',d:'+1.8%',p:true},
+  {id:'CPI',v:'314.2',d:'+3.2% YoY',p:false},{id:'FEDFUNDS',v:'5.33%',d:'+525bp',p:false},
+  {id:'GDPC1',v:'$22.4T',d:'+2.9% YoY',p:true},{id:'T10Y2Y',v:'−0.38%',d:'Inverted',p:false},
+  {id:'JOLTS',v:'8,863K',d:'−14% YoY',p:false},{id:'WAUR',v:'3.9%',d:'−0.2pp',p:true},
+];
+const tt=document.getElementById('tTrack');
+[0,1].forEach(()=>TDATA.forEach(d=>{
+  const div=document.createElement('div');div.className='t-item';
+  div.innerHTML=`<span class="t-id">${d.id}</span><span class="t-v">${d.v}</span><span class="t-d ${d.p?'tp':'tn'}">${d.p?'▲':'▼'} ${d.d}</span>`;
+  tt.appendChild(div);
+}));
+
+/* ━━━ CHART DATA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+// Monthly UNRATE Jan 1990 – Dec 2024
+const UNRATE=[5.3,5.4,5.2,5.4,5.5,5.3,5.5,5.7,5.9,5.9,6.1,6.3,6.4,6.6,6.8,6.7,6.9,6.9,6.8,6.9,6.9,7.0,7.0,7.3,7.3,7.4,7.4,7.4,7.6,7.8,7.7,7.6,7.6,7.3,7.4,7.4,7.3,7.1,7.0,7.1,7.1,7.0,6.9,6.8,6.7,6.8,6.6,6.4,6.7,6.6,6.5,6.4,6.1,6.1,6.1,6.0,5.9,5.8,5.6,5.5,5.6,5.4,5.4,5.8,5.6,5.6,5.7,5.7,5.6,5.5,5.6,5.6,5.6,5.5,5.5,5.6,5.6,5.3,5.5,5.1,5.2,5.2,5.4,5.4,5.3,5.2,5.2,5.1,4.9,5.0,4.9,4.8,4.9,4.7,4.6,4.7,4.6,4.6,4.7,4.3,4.4,4.5,4.5,4.5,4.6,4.5,4.4,4.4,4.3,4.4,4.2,4.3,4.2,4.3,4.3,4.2,4.2,4.1,4.1,4.0,4.0,4.1,4.0,3.8,4.0,4.0,4.0,4.1,3.9,3.9,3.9,3.9,4.2,4.2,4.3,4.4,4.3,4.5,4.6,4.9,5.0,5.3,5.5,5.7,5.7,5.7,5.7,5.9,5.8,5.8,5.8,5.7,5.7,5.7,5.9,6.0,5.8,5.9,5.9,6.0,6.1,6.3,6.2,6.1,6.1,6.0,5.8,5.7,5.7,5.6,5.8,5.6,5.6,5.6,5.5,5.4,5.4,5.5,5.4,5.4,5.3,5.4,5.2,5.2,5.1,5.0,5.0,4.9,5.0,5.0,5.0,4.9,4.7,4.8,4.7,4.7,4.6,4.6,4.7,4.7,4.5,4.4,4.5,4.4,4.6,4.5,4.4,4.5,4.4,4.6,4.7,4.6,4.7,4.7,4.7,5.0,5.0,4.9,5.1,5.0,5.4,5.6,5.8,6.1,6.1,6.5,6.8,7.3,7.8,8.3,8.7,9.0,9.4,9.5,9.5,9.6,9.8,10.0,9.9,9.9,9.8,9.8,9.9,9.9,9.6,9.4,9.5,9.5,9.5,9.5,9.8,9.4,9.1,9.0,8.9,9.0,9.0,9.1,9.0,9.1,9.0,8.9,8.6,8.5,8.3,8.3,8.2,8.2,8.2,8.2,8.2,8.1,7.8,7.8,7.7,7.9,7.9,7.7,7.5,7.6,7.5,7.5,7.3,7.2,7.2,7.2,7.0,6.7,6.6,6.7,6.7,6.2,6.3,6.1,6.2,6.1,5.9,5.7,5.8,5.6,5.7,5.5,5.5,5.4,5.5,5.3,5.3,5.1,5.0,5.0,5.0,5.0,4.9,4.9,5.0,5.0,4.7,4.9,4.9,4.9,5.0,4.9,4.6,4.7,4.7,4.6,4.5,4.4,4.3,4.3,4.3,4.4,4.2,4.1,4.1,4.1,4.1,4.1,4.1,3.9,3.8,4.0,3.9,3.8,3.7,3.7,3.7,3.9,4.0,3.8,3.8,3.6,3.6,3.7,3.7,3.7,3.5,3.6,3.5,3.5,3.5,3.5,4.4,14.7,13.3,11.1,10.2,8.4,7.9,6.9,6.7,6.7,6.4,6.2,6.0,6.0,5.8,5.9,5.4,5.2,4.8,4.6,4.2,3.9,4.0,3.8,3.6,3.6,3.6,3.6,3.5,3.7,3.5,3.7,3.7,3.5,3.4,3.6,3.5,3.4,3.7,3.6,3.5,3.8,3.8,3.9,3.7,3.7,3.7,3.9,3.8,3.9,4.0,4.1,4.3,4.2,4.1,4.1,4.2,4.2];
+// Federal Funds Rate monthly Jan 1990–Dec 2024 (simplified)
+const FEDFUNDS=[8.23,8.24,8.28,8.26,8.16,8.29,8.15,8.13,8.20,8.11,7.81,7.31,6.91,6.25,6.12,5.91,5.79,5.78,5.66,5.57,5.45,5.21,4.81,4.43,4.03,4.00,3.98,3.73,3.52,3.76,3.52,3.31,3.00,2.96,3.09,2.92,3.02,3.07,3.11,3.18,3.23,3.00,3.06,3.18,3.01,3.18,3.46,3.00,5.45,6.05,6.0,5.99,6.0,6.0,5.25,5.25,5.25,5.25,5.25,5.25,5.25,5.25,5.25,5.25,5.25,4.99,5.02,5.02,4.75,4.75,4.61,4.24,4.0,3.18,2.61,2.25,2.0,2.0,2.27,2.5,2.5,2.5,2.5,2.5,2.5,2.5,2.5,2.5,2.25,2.0,1.75,1.75,1.55,1.58,1.58,1.55,1.58,1.58,1.58,1.58,1.58,1.58,1.55,1.55,1.55,1.55,1.0,1.0,.8,.65,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.25,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.08,.33,.33,.83,1.58,2.33,3.08,3.83,4.33,4.58,4.83,5.08,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.08,4.83,4.58];
+// CPI index Jan 2000–Dec 2024 only (for display span matching)
+const CPI_RAW=[168.8,169.8,171.2,171.3,171.5,172.4,172.8,172.8,173.7,174.0,174.1,174.0,175.1,175.8,176.5,177.1,177.4,177.5,177.5,177.5,178.3,177.7,177.4,176.7,177.1,177.8,178.8,179.8,179.8,180.0,180.1,180.7,181.0,181.3,181.3,180.9,181.7,182.7,184.2,183.8,183.6,183.7,183.9,184.6,185.2,185.0,184.5,184.3,183.1,184.2,184.2,185.7,186.7,188.0,190.1,189.8,189.7,190.9,190.6,190.3,191.8,193.3,194.6,194.9,194.2,193.4,195.3,198.8,200.1,199.9,199.8,199.2,199.5,199.8,200.0,200.0,200.7,201.5,201.5,202.9,202.5,202.7,203.4,204.1,205.4,204.7,204.2,204.2,204.3,203.7,202.4,204.0,207.3,209.0,211.1,213.2,213.3,213.2,215.3,215.8,216.5,218.8,218.0,215.3,211.1,212.2,213.5,213.0,212.7,214.5,216.8,218.1,215.2,215.4,218.0,220.4,221.0,219.9,222.0,225.7,226.5,226.6,226.4,228.2,229.0,229.8,230.7,231.3,231.6,232.9,234.1,235.2,235.2,236.8,237.7,238.1,237.9,238.1,238.0,237.4,238.4,240.2,242.0,245.0,245.9,246.7,247.8,249.1,251.1,251.7,253.8,252.5,251.9,252.9,254.6,255.0,256.6,257.3,258.1,258.1,258.7,260.5,261.7,264.9,267.0,268.6,268.6,269.2,269.5,273.3,276.6,277.1,277.9,281.1,283.7,286.0,288.5,289.1,290.3,293.1,295.7,296.1,297.7,299.1,298.6,296.2,296.9,297.1,296.8,298.7,300.0,301.1,301.8,303.0,303.1,302.7,305.4,308.7,310.1,311.2,312.4,313.0,314.9,315.3,316.1,315.5,314.2];
+// T10Y2Y monthly Jan 2000–Dec 2024
+const T10Y2Y=[-0.25,0.14,0.35,0.50,0.54,0.61,0.73,0.89,0.98,0.88,0.70,0.57,0.33,0.15,0.22,0.42,0.45,0.43,0.44,0.52,0.61,0.63,0.60,0.61,0.76,0.78,0.84,0.77,0.70,0.65,0.68,0.68,0.62,0.53,0.38,0.26,0.09,0.00,-0.05,-0.08,-0.09,-0.06,0.08,0.16,0.26,0.35,0.38,0.35,0.56,0.82,1.12,1.48,1.67,1.78,1.98,2.14,2.29,2.35,2.37,2.36,2.34,2.27,2.19,2.15,2.13,2.08,1.99,1.87,1.70,1.46,1.22,1.00,0.98,1.07,1.15,1.22,1.27,1.26,1.24,1.12,0.93,0.78,0.64,0.49,0.41,0.39,0.41,0.46,0.50,0.56,0.63,0.78,0.87,0.84,0.83,0.84,0.90,0.98,1.12,1.26,1.40,1.39,1.23,1.04,0.82,0.70,0.63,0.55,0.54,0.61,0.73,0.84,0.94,0.99,1.03,0.97,0.92,0.87,0.80,0.68,0.56,0.46,0.38,0.32,0.35,0.50,0.72,0.96,1.22,1.48,1.66,1.72,1.68,1.52,1.32,1.22,1.20,1.25,1.38,1.48,1.52,1.44,1.26,1.08,1.15,1.36,1.55,1.68,1.78,1.86,1.92,1.88,1.79,1.68,1.62,1.72,1.88,2.12,2.36,2.52,2.58,2.60,2.52,2.38,2.18,2.00,1.88,1.86,1.96,2.12,2.26,2.38,2.48,2.50,2.44,2.32,2.18,2.02,1.88,1.76,1.72,1.74,1.82,1.92,2.02,2.05,1.98,1.82,1.68,1.62,1.74,1.92,2.08,2.15,2.06,1.90,1.74,1.68,1.70,1.72,1.60,1.42,1.22,1.04,0.96,1.02,1.18,1.38,1.52,1.48,1.30,1.12,1.02,1.06,1.12,1.06,0.88,0.62,0.38,0.18,0.05,-0.06,-0.10,-0.08,0.02,0.18,0.36,0.52,0.72,1.02,1.38,1.68,1.86,1.92,1.86,1.68,1.42,1.12,0.82,0.52,0.22,-0.08,-0.32,-0.48,-0.56,-0.58,-0.52,-0.42,-0.30,-0.18,-0.10,-0.05,0.00,0.05];
+
+const SERIES={
+  UNRATE:{label:'US Unemployment Rate',unit:'%',color:'#c8ff00',data:UNRATE,startYear:1990,rec:[[6,14],[134,142],[215,233],[361,363]]},
+  FEDFUNDS:{label:'Federal Funds Rate',unit:'%',color:'#60a5fa',data:FEDFUNDS,startYear:1990,rec:[[6,14],[134,142],[215,233],[209,211]]},
+  CPI:{label:'Consumer Price Index',unit:'Index',color:'#fb923c',data:CPI_RAW,startYear:2000,rec:[[215-120,233-120],[361-120,363-120]]},
+  T10Y2Y:{label:'10Y–2Y Yield Spread',unit:'%',color:'#f472b6',data:T10Y2Y,startYear:2000,rec:[[80,88],[215-120,233-120],[361-120,363-120]]},
 };
-Chart.register(recessionPlugin);
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function idxToDate(series,i){const y=series.startYear+Math.floor(i/12),m=i%12;return`${MONTHS[m]} ${y}`}
 
-function mkLine(id,labels,datasets,recBands,yLabel){
-  return new Chart(document.getElementById(id),{
-    type:'line',
-    data:{labels,datasets},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      animation:{duration:1000,easing:'easeInOutQuart'},
-      interaction:{mode:'index',intersect:false},
-      plugins:{
-        legend:{display:datasets.length>1,labels:{color:muted,boxWidth:12,padding:16,font:{size:10}}},
-        tooltip:{backgroundColor:'#0D0D1A',borderColor:'#1C1C30',borderWidth:1,titleColor:text,bodyColor:muted,padding:10},
-        recession:{bands:recBands||[]}
-      },
-      scales:{
-        x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{maxTicksLimit:8,color:muted}},
-        y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:muted},title:{display:!!yLabel,text:yLabel||'',color:muted,font:{size:10}}}
-      }
-    }
+/* ━━━ TABS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+let active='UNRATE';
+const tabsWrap=document.getElementById('tabs');
+Object.keys(SERIES).forEach(k=>{
+  const btn=document.createElement('button');
+  btn.className='tab'+(k==='UNRATE'?' active':'');
+  btn.textContent=k;btn.dataset.k=k;
+  btn.addEventListener('click',()=>{
+    active=k;
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active');
+    startDraw();
   });
-}
+  tabsWrap.appendChild(btn);
+});
 
-// ── GENERATE MONTHLY LABELS ──
-function monthLabels(start,end){
-  const labels=[];
-  const [sy,sm]=start.split('-').map(Number);
-  const [ey,em]=end.split('-').map(Number);
-  let y=sy,m=sm;
-  while(y<ey||(y===ey&&m<=em)){
-    labels.push(`${y}-${String(m).padStart(2,'0')}`);
-    m++;if(m>12){m=1;y++;}
+/* ━━━ MAIN CHART ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+const mc=document.getElementById('mainChart'),mctx=mc.getContext('2d');
+const tip=document.getElementById('cTip');
+let cW,cH,drawProg=0,animReq,animStart=null;
+const PAD={l:52,r:20,t:20,b:36};
+
+function resizeChart(){
+  cW=mc.width=mc.offsetWidth;
+  cH=mc.height=mc.offsetHeight;
+}
+function iX(s,i){return PAD.l+(i/(s.data.length-1))*(cW-PAD.l-PAD.r)}
+function iY(s,v){
+  const vals=s.data,mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1;
+  return PAD.t+(1-(v-mn)/rng)*(cH-PAD.t-PAD.b);
+}
+function inRec(s,i){return s.rec.some(([a,b])=>i>=a&&i<=b)}
+
+function drawMain(prog,hoverI=-1){
+  const s=SERIES[active];
+  mctx.clearRect(0,0,cW,cH);
+
+  // Guide lines
+  const vals=s.data;const mn=Math.min(...vals),mx=Math.max(...vals);
+  const step=(mx-mn)/4;
+  for(let i=0;i<=4;i++){
+    const v=mn+step*i,y=iY(s,v);
+    mctx.beginPath();mctx.strokeStyle='rgba(255,255,255,0.05)';mctx.lineWidth=1;
+    mctx.setLineDash([4,8]);mctx.moveTo(PAD.l,y);mctx.lineTo(cW-PAD.r,y);mctx.stroke();
+    mctx.setLineDash([]);
+    mctx.fillStyle='rgba(255,255,255,0.2)';mctx.font='10px "IBM Plex Mono",monospace';
+    mctx.textAlign='right';mctx.fillText(v.toFixed(1),PAD.l-8,y+4);
   }
-  return labels;
-}
-function quarterLabels(start,end){
-  const labels=[];
-  let [y,q]=[parseInt(start),1];
-  const ey=parseInt(end);
-  while(y<ey){
-    labels.push(`${y} Q${q}`);
-    q++;if(q>4){q=1;y++;}
-  }
-  return labels;
-}
-// filter labels to every 6th for display
-function everyN(arr,n){return arr.map((v,i)=>i%n===0?v:'')}
 
-const mLabels=monthLabels('2010-01','2025-03');
-const mCount=mLabels.length;
-
-// shared recessions
-const rec2020=[[50,53]]; // approx index of covid in 2010-start series
-// We'll use approximate index math
-function recIdx(labelArr,startLabel,endLabel){
-  const s=labelArr.indexOf(startLabel);
-  const e=labelArr.indexOf(endLabel);
-  return(s>=0&&e>=0)?[[s,e]]:[];
-}
-const recCovid=recIdx(mLabels,'2020-02','2020-04');
-const recGFC=recIdx(mLabels,'2010-01','2010-01'); // GFC ended before our window
-
-// ── UNEMPLOYMENT ──
-(()=>{
-  const base=[9.8,9.5,9.0,8.8,8.6,8.2,8.2,8.3,7.9,7.7,7.5,7.9, // 2010
-              8.3,8.2,8.1,8.2,8.1,8.2,8.3,8.1,7.8,7.8,7.7,7.8, // 2011
-              8.3,8.3,8.2,8.1,8.2,8.2,8.3,8.1,7.8,7.8,7.7,7.9, // 2012
-              7.9,7.7,7.6,7.5,7.5,7.5,7.3,7.2,7.2,7.2,7.0,6.7, // 2013
-              6.6,6.7,6.7,6.2,6.3,6.1,6.2,6.2,5.9,5.7,5.8,5.6, // 2014
-              5.7,5.5,5.5,5.4,5.5,5.3,5.2,5.1,5.1,5.0,5.0,5.0, // 2015
-              4.9,4.9,5.0,5.0,4.7,4.9,4.9,4.9,5.0,4.8,4.6,4.7, // 2016
-              4.7,4.7,4.5,4.4,4.4,4.3,4.3,4.4,4.2,4.1,4.1,4.1, // 2017
-              4.1,4.1,4.1,4.0,3.8,4.0,3.9,3.8,3.7,3.7,3.7,3.9, // 2018
-              4.0,3.8,3.8,3.6,3.6,3.7,3.7,3.7,3.5,3.6,3.5,3.5, // 2019
-              3.5,3.5,4.4,14.7,13.2,11.1,10.2,8.4,7.8,6.9,6.7,6.7, // 2020
-              6.4,6.2,6.0,6.0,5.8,5.9,5.7,5.4,4.7,4.6,4.2,3.9, // 2021
-              4.0,3.8,3.6,3.6,3.6,3.6,3.5,3.7,3.5,3.6,3.7,3.5, // 2022
-              3.4,3.6,3.5,3.4,3.7,3.6,3.5,3.8,3.8,3.9,3.7,3.7, // 2023
-              3.7,3.9,3.8,3.9,4.0,4.1,4.3,4.2,4.2,4.1,4.2,4.1, // 2024
-              4.1,4.0,4.1]; // 2025
-  const labels=mLabels.slice(0,base.length);
-  mkLine('cUnemployment',everyN(labels,6),[{
-    label:'Unemployment %',data:base,borderColor:gold,backgroundColor:goldDim,
-    borderWidth:1.5,pointRadius:0,fill:true,tension:.3
-  }],recCovid,'%');
-})();
-
-// ── FED FUNDS ──
-(()=>{
-  const data=[0.18,0.16,0.14,0.10,0.09,0.09,0.08,0.10,0.09,0.16,0.20,0.07, // 2010
-              0.05,0.10,0.08,0.07,0.09,0.09,0.07,0.10,0.09,0.07,0.08,0.07, // 2011
-              0.07,0.10,0.13,0.10,0.16,0.18,0.13,0.14,0.13,0.16,0.16,0.16, // 2012
-              0.14,0.15,0.14,0.15,0.11,0.09,0.09,0.09,0.09,0.09,0.08,0.09, // 2013
-              0.07,0.07,0.08,0.09,0.09,0.10,0.09,0.09,0.09,0.09,0.09,0.12, // 2014
-              0.11,0.11,0.11,0.12,0.12,0.13,0.13,0.14,0.14,0.12,0.12,0.24, // 2015
-              0.34,0.38,0.36,0.37,0.37,0.38,0.39,0.40,0.40,0.40,0.41,0.54, // 2016
-              0.66,0.66,0.79,0.91,0.91,1.04,1.15,1.16,1.15,1.16,1.16,1.30, // 2017
-              1.41,1.42,1.51,1.69,1.69,1.82,1.91,1.91,1.99,2.19,2.20,2.40, // 2018
-              2.40,2.40,2.41,2.42,2.39,2.38,2.40,2.13,1.95,1.83,1.55,1.55, // 2019
-              1.58,1.58,0.65,0.05,0.05,0.08,0.10,0.09,0.09,0.09,0.09,0.09, // 2020
-              0.09,0.08,0.07,0.07,0.06,0.08,0.10,0.09,0.08,0.08,0.08,0.08, // 2021
-              0.08,0.08,0.20,0.33,0.77,1.21,1.68,2.33,3.08,3.78,3.83,4.24, // 2022
-              4.57,4.57,4.65,4.83,5.08,5.08,5.12,5.33,5.33,5.33,5.33,5.33, // 2023
-              5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.08,4.83,4.83,4.58,4.33, // 2024
-              4.33,4.33,4.33]; // 2025
-  const labels=mLabels.slice(0,data.length);
-  mkLine('cFedFunds',everyN(labels,6),[{
-    label:'Fed Funds %',data,borderColor:'#7B9ED9',backgroundColor:'rgba(123,158,217,0.10)',
-    borderWidth:1.5,pointRadius:0,fill:true,tension:.2
-  }],recCovid,'%');
-})();
-
-// ── CPI YoY ──
-(()=>{
-  const data=[2.6,2.1,2.3,2.2,3.2,1.1,1.2,1.2,2.0,2.2,1.1,1.5,
-              2.9,2.9,2.7,3.2,3.6,3.6,3.6,3.8,3.9,3.5,3.4,2.9,
-              2.9,2.9,2.7,2.3,1.7,1.8,1.4,1.5,1.2,2.0,1.4,1.5,
-              1.6,1.5,1.5,1.5,2.0,2.1,2.0,1.5,1.7,1.2,1.2,1.5,
-              1.6,0.0,0.0,0.0,-0.2,0.1,0.2,0.2,0.0,0.2,0.5,0.7,
-              1.4,1.0,0.9,1.1,1.0,1.0,0.8,1.1,1.5,1.6,1.7,2.1,
-              2.5,2.7,2.4,2.2,1.9,1.6,1.7,1.7,2.2,2.0,1.7,2.1,
-              2.1,2.2,2.4,2.5,2.8,2.9,2.9,2.7,2.3,2.5,2.2,1.9,
-              1.6,1.5,1.9,2.0,1.8,1.6,1.8,1.7,1.7,2.3,2.1,2.3,
-              2.5,1.7,1.5,2.0,1.8,1.6,1.7,1.8,1.7,1.8,2.1,2.3,
-              2.5,2.3,1.5,-0.3,0.1,0.6,1.0,1.3,1.4,1.2,1.2,1.4,
-              1.4,1.7,2.6,4.2,5.0,5.4,5.4,5.3,5.4,6.2,6.8,7.1,
-              7.5,7.9,8.5,8.3,8.6,9.1,8.5,8.3,8.2,7.7,7.1,6.5,
-              6.4,6.0,5.0,4.9,4.0,3.0,3.2,3.7,3.7,3.2,3.1,3.4,
-              3.1,3.2,3.5,3.4,3.3,3.0,2.9,2.5,2.4,2.6,2.7,2.9,
-              3.0,2.8,2.4];
-  const labels=mLabels.slice(0,data.length);
-  mkLine('cCPI',everyN(labels,6),[{
-    label:'CPI YoY %',data,borderColor:'#E07B5C',backgroundColor:'rgba(224,123,92,0.10)',
-    borderWidth:1.5,pointRadius:0,fill:true,tension:.3
-  }],recCovid,'YoY %');
-})();
-
-// ── JOLTS ──
-(()=>{
-  const data=[2800,2900,3000,3100,3000,3100,3200,3100,3200,3300,3200,3400,
-              3500,3400,3500,3600,3500,3600,3700,3600,3700,3500,3600,3700,
-              3600,3700,3600,3800,3700,3800,3700,3800,3700,3800,3900,3800,
-              3900,3800,4000,3900,4000,3900,4100,4000,4100,4000,4100,4200,
-              4500,4400,4500,4600,4500,4600,4700,4600,4700,4600,4700,4800,
-              5100,5000,5100,5200,5100,5200,5300,5200,5300,5200,5300,5400,
-              5500,5600,5500,5700,5600,5700,5600,5700,5800,5700,5800,5900,
-              5900,6000,5900,6100,6000,6100,6200,6100,6200,6100,6200,6300,
-              6600,6500,6700,6600,6800,6700,6800,6900,7000,6900,7100,7000,
-              7200,7100,7200,7300,7200,7300,7400,7300,7400,7300,7400,7500,
-              6900,6800,5000,4900,5200,5800,6200,6500,6800,6900,6500,6700,
-              7200,7400,7800,8200,9200,9700,10400,10800,10700,10500,10600,10600,
-              11100,11200,11400,11500,11800,11200,10700,10600,10200,10300,10700,10500,
-              10800,10600,10000,9700,9600,9600,9500,9300,9400,9400,9100,8800,
-              8800,8700,8600,8500,8400,8300,8200,8000,7900,7800,7800,7700,
-              7700,7500,7500];
-  const labels=mLabels.slice(0,data.length);
-  mkLine('cJolts',everyN(labels,6),[{
-    label:'Openings (000s)',data,borderColor:'#9B7DE0',backgroundColor:'rgba(155,125,224,0.10)',
-    borderWidth:1.5,pointRadius:0,fill:true,tension:.3
-  }],recCovid,'Thousands');
-})();
-
-// ── PAYROLLS ──
-(()=>{
-  const data=[129636,129820,130003,130300,131000,131500,131900,132200,132600,133100,133500,133900,
-              134300,134600,134900,135100,135400,135700,135900,136200,136500,136700,136900,137100,
-              137300,137500,137700,137900,138100,138400,138600,138800,139100,139300,139500,139800,
-              140000,140200,140400,140700,140900,141100,141400,141700,141900,142100,142300,142600,
-              142900,143200,143500,143700,143900,144100,144400,144700,144900,145100,145300,145600,
-              145900,146200,146400,146600,146900,147100,147400,147600,147900,148100,148300,148500,
-              148700,148900,149100,149300,149600,149800,150100,150300,150600,150800,151100,151400,
-              151700,151900,152200,152400,152700,152900,153200,153400,153700,153900,154200,154400,
-              154700,154900,155200,155400,155700,155900,156200,156500,156700,157000,157200,157500,
-              157700,158000,158200,158500,158700,158900,159200,159400,159700,159900,160200,160500,
-              160800,161100,130200,108000,120100,135000,139500,141800,143800,145800,147000,149200,
-              150100,151100,152500,153800,154900,155500,156100,156800,157300,157800,158200,158600,
-              158900,159300,159700,160100,160400,160800,161100,161400,161700,162000,162300,162600,
-              162900,163200,163500,163700,164000,164300,164600,164900,165200,165500,165700,166000,
-              166200,166400,166600,166800,167000,167200,167400,167600,167800,168000,168200,168400,
-              168500,168700,168900];
-  const labels=mLabels.slice(0,data.length);
-  mkLine('cPayrolls',everyN(labels,6),[{
-    label:'Nonfarm Payrolls (000s)',data,borderColor:gold,backgroundColor:goldDim,
-    borderWidth:1.5,pointRadius:0,fill:true,tension:.3
-  }],recCovid,'Thousands');
-})();
-
-// ── GDP ──
-(()=>{
-  const qLabels=quarterLabels('2010','2026');
-  const data=[15016,15287,15521,15640,15761,15983,16107,16155,16340,16452,16580,16747,
-              16816,16986,17080,17234,17351,17540,17648,17825,17882,17974,18085,18222,
-              18281,18434,18511,18675,18762,18927,19020,19219,19379,19476,19600,19737,
-              19832,19964,20071,20241,20365,20502,20658,20797,20921,21098,21286,21481,
-              21728,21540,19636,21170,21843,22038,22997,23202,23468,23755,24002,24349,
-              24694,25001,25248,25511,25713,25876,26139,26349,26524,26725,26951,27116,
-              27357,27521,27750,27950,28110,28320];
-  mkLine('cGDP',everyN(qLabels,4),[{
-    label:'Real GDP (Bil. 2017$)',data:data.slice(0,qLabels.length),
-    borderColor:'#5CC9C9',backgroundColor:'rgba(92,201,201,0.10)',
-    borderWidth:1.5,pointRadius:0,fill:true,tension:.3
-  }],[]);
-})();
-
-// ── WA UNEMPLOYMENT ──
-(()=>{
-  const usBase=[9.8,9.5,9.0,8.8,8.6,8.2,8.2,8.3,7.9,7.7,7.5,7.9,
-                8.3,8.2,8.1,8.2,8.1,8.2,8.3,8.1,7.8,7.8,7.7,7.8,
-                8.3,8.3,8.2,8.1,8.2,8.2,8.3,8.1,7.8,7.8,7.7,7.9,
-                7.9,7.7,7.6,7.5,7.5,7.5,7.3,7.2,7.2,7.2,7.0,6.7,
-                6.6,6.7,6.7,6.2,6.3,6.1,6.2,6.2,5.9,5.7,5.8,5.6,
-                5.7,5.5,5.5,5.4,5.5,5.3,5.2,5.1,5.1,5.0,5.0,5.0,
-                4.9,4.9,5.0,5.0,4.7,4.9,4.9,4.9,5.0,4.8,4.6,4.7,
-                4.7,4.7,4.5,4.4,4.4,4.3,4.3,4.4,4.2,4.1,4.1,4.1,
-                4.1,4.1,4.1,4.0,3.8,4.0,3.9,3.8,3.7,3.7,3.7,3.9,
-                4.0,3.8,3.8,3.6,3.6,3.7,3.7,3.7,3.5,3.6,3.5,3.5,
-                3.5,3.5,4.4,14.7,13.2,11.1,10.2,8.4,7.8,6.9,6.7,6.7,
-                6.4,6.2,6.0,6.0,5.8,5.9,5.7,5.4,4.7,4.6,4.2,3.9,
-                4.0,3.8,3.6,3.6,3.6,3.6,3.5,3.7,3.5,3.6,3.7,3.5,
-                3.4,3.6,3.5,3.4,3.7,3.6,3.5,3.8,3.8,3.9,3.7,3.7,
-                3.7,3.9,3.8,3.9,4.0,4.1,4.3,4.2,4.2,4.1,4.2,4.1,
-                4.1,4.0,4.1];
-  const waData=usBase.map((v,i)=>{
-    if(i>=146&&i<=150) return v+3.5+Math.random()*0.5;
-    if(i>=120&&i<=145) return v+1.4+Math.random()*0.3;
-    if(i>=160) return v+1.2+Math.random()*0.2;
-    return v+0.6+Math.random()*0.3;
+  // Recession shading
+  s.rec.forEach(([a,b])=>{
+    if(a>Math.round(prog*(vals.length-1)))return;
+    const x1=iX(s,a),x2=iX(s,Math.min(b,Math.round(prog*(vals.length-1))));
+    mctx.fillStyle='rgba(255,61,46,0.10)';
+    mctx.fillRect(x1,PAD.t,x2-x1,cH-PAD.t-PAD.b);
   });
-  const labels=mLabels.slice(0,usBase.length);
-  mkLine('cWA',everyN(labels,6),[
-    {label:'Washington',data:waData,borderColor:'#5CC9C9',backgroundColor:'rgba(92,201,201,0.08)',borderWidth:1.5,pointRadius:0,fill:false,tension:.3},
-    {label:'US National',data:usBase,borderColor:gold,backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,fill:false,tension:.3,borderDash:[4,3]}
-  ],recCovid,'%');
-})();
+
+  // Year labels
+  const startY=s.startYear;
+  mctx.textAlign='center';
+  for(let y=startY;y<=2024;y+=5){
+    const i=(y-startY)*12;if(i>=vals.length)break;
+    const x=iX(s,i);
+    mctx.fillStyle='rgba(255,255,255,0.18)';mctx.font='10px "IBM Plex Mono",monospace';
+    mctx.fillText(y,x,cH-8);
+  }
+
+  // Draw line
+  const endI=Math.min(Math.round(prog*(vals.length-1)),vals.length-1);
+  mctx.beginPath();
+  let segStart=0,segRec=inRec(s,0);
+  const flush=end=>{
+    if(segStart>=end)return;
+    mctx.strokeStyle=segRec?'rgba(255,61,46,0.7)':s.color;
+    mctx.lineWidth=1.8;mctx.lineJoin='round';mctx.lineCap='round';
+    mctx.beginPath();mctx.moveTo(iX(s,segStart),iY(s,vals[segStart]));
+    for(let j=segStart+1;j<=end;j++) mctx.lineTo(iX(s,j),iY(s,vals[j]));
+    mctx.stroke();
+  };
+  for(let i=1;i<=endI;i++){const r=inRec(s,i);if(r!==segRec){flush(i-1);segStart=i-1;segRec=r}}
+  flush(endI);
+
+  // Area fill
+  if(endI>0){
+    mctx.beginPath();mctx.moveTo(iX(s,0),cH-PAD.b);
+    for(let i=0;i<=endI;i++) mctx.lineTo(iX(s,i),iY(s,vals[i]));
+    mctx.lineTo(iX(s,endI),cH-PAD.b);mctx.closePath();
+    const g=mctx.createLinearGradient(0,0,0,cH);
+    g.addColorStop(0,hexToRgba(s.color,.12));
+    g.addColorStop(1,hexToRgba(s.color,0));
+    mctx.fillStyle=g;mctx.fill();
+  }
+
+  // Hover crosshair
+  if(hoverI>=0&&hoverI<=endI){
+    const hx=iX(s,hoverI),hy=iY(s,vals[hoverI]);
+    mctx.beginPath();mctx.strokeStyle='rgba(255,255,255,0.15)';mctx.lineWidth=1;
+    mctx.setLineDash([3,5]);mctx.moveTo(hx,PAD.t);mctx.lineTo(hx,cH-PAD.b);mctx.stroke();mctx.setLineDash([]);
+    mctx.beginPath();mctx.arc(hx,hy,4,0,Math.PI*2);
+    mctx.fillStyle=inRec(s,hoverI)?'#ff3d2e':s.color;mctx.fill();
+    mctx.beginPath();mctx.arc(hx,hy,2,0,Math.PI*2);mctx.fillStyle='#0e0e0e';mctx.fill();
+  }
+}
+
+function hexToRgba(hex,a){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return`rgba(${r},${g},${b},${a})`;
+}
+
+function startDraw(){
+  cancelAnimationFrame(animReq);drawProg=0;animStart=null;
+  function frame(ts){
+    if(!animStart)animStart=ts;
+    const el=ts-animStart;
+    drawProg=Math.min(el/2200,1);
+    const eased=1-Math.pow(1-drawProg,4);
+    drawMain(eased);
+    if(drawProg<1)animReq=requestAnimationFrame(frame);
+  }
+  animReq=requestAnimationFrame(frame);
+}
+
+mc.addEventListener('mousemove',e=>{
+  if(drawProg<1)return;
+  const rect=mc.getBoundingClientRect();
+  const x=e.clientX-rect.left;
+  const s=SERIES[active];
+  const chartX=x-PAD.l,chartW=cW-PAD.l-PAD.r;
+  const idx=Math.max(0,Math.min(s.data.length-1,Math.round((chartX/chartW)*(s.data.length-1))));
+  drawMain(1,idx);
+  tip.textContent=`${idxToDate(s,idx)}  ${s.data[idx].toFixed(2)} ${s.unit}${inRec(s,idx)?' · recession':''}`;
+  tip.style.left=Math.min(x+12,cW-tip.offsetWidth-8)+'px';
+  tip.style.top=Math.max(iY(s,s.data[idx])-38,8)+'px';
+  tip.style.opacity='1';
+});
+mc.addEventListener('mouseleave',()=>{tip.style.opacity='0';if(drawProg>=1)drawMain(1)});
+
+function initChart(){
+  const wrap=mc.parentElement;
+  resizeChart();
+  startDraw();
+}
+window.addEventListener('resize',()=>{resizeChart();drawMain(drawProg)});
+window.addEventListener('load',initChart);
+
+/* ━━━ NAV SCROLL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+window.addEventListener('scroll',()=>{
+  document.getElementById('nav').classList.toggle('s',window.scrollY>60);
+});
+
+/* ━━━ REVEAL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+const ro=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('on');ro.unobserve(e.target)}});
+},{threshold:.1});
+document.querySelectorAll('.rev').forEach(el=>ro.observe(el));
 </script>
 </body>
 </html>
