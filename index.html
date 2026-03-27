@@ -145,9 +145,7 @@ nav.s{background:rgba(14,14,14,.9);backdrop-filter:blur(14px);border-color:var(-
 }
 .t-label::before{content:'●';font-size:7px;animation:blink 1.4s ease infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.t-track{display:flex;animation:tkr 30s linear infinite;white-space:nowrap}
-.t-track:hover{animation-play-state:paused}
-@keyframes tkr{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.t-track{display:flex;white-space:nowrap;will-change:transform}
 .t-item{
   display:flex;align-items:center;gap:10px;
   padding:0 28px;font-size:12px;
@@ -573,6 +571,19 @@ const tt=document.getElementById('tTrack');
   div.innerHTML=`<span class="t-id">${d.id}</span><span class="t-v">${d.v}</span><span class="t-d ${d.p?'tp':'tn'}">${d.p?'▲':'▼'} ${d.d}</span>`;
   tt.appendChild(div);
 }));
+// JS marquee — no CSS keyframe jump
+let tickerPaused=false,tpos=0;
+tt.parentElement.addEventListener('mouseenter',()=>tickerPaused=true);
+tt.parentElement.addEventListener('mouseleave',()=>tickerPaused=false);
+(function tickerFrame(){
+  if(!tickerPaused){
+    tpos-=0.55;
+    const half=tt.scrollWidth/2;
+    if(Math.abs(tpos)>=half) tpos=0;
+    tt.style.transform=`translateX(${tpos}px)`;
+  }
+  requestAnimationFrame(tickerFrame);
+})();
 
 /* ━━━ CHART DATA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 // Monthly UNRATE Jan 1990 – Dec 2024
@@ -587,9 +598,14 @@ const T10Y2Y=[-0.25,0.14,0.35,0.50,0.54,0.61,0.73,0.89,0.98,0.88,0.70,0.57,0.33,
 const SERIES={
   UNRATE:{label:'US Unemployment Rate',unit:'%',color:'#c8ff00',data:UNRATE,startYear:1990,rec:[[6,14],[134,142],[215,233],[361,363]]},
   FEDFUNDS:{label:'Federal Funds Rate',unit:'%',color:'#60a5fa',data:FEDFUNDS,startYear:1990,rec:[[6,14],[134,142],[215,233],[209,211]]},
-  CPI:{label:'Consumer Price Index',unit:'Index',color:'#fb923c',data:CPI_RAW,startYear:2000,rec:[[215-120,233-120],[361-120,363-120]]},
-  T10Y2Y:{label:'10Y–2Y Yield Spread',unit:'%',color:'#f472b6',data:T10Y2Y,startYear:2000,rec:[[80,88],[215-120,233-120],[361-120,363-120]]},
+  CPI:{label:'Consumer Price Index',unit:'Index',color:'#fb923c',data:CPI_RAW,startYear:2000,rec:[[95,113],[241,243]]},
+  T10Y2Y:{label:'10Y–2Y Yield Spread',unit:'%',color:'#f472b6',data:T10Y2Y,startYear:2000,rec:[[80,88],[95,113],[241,243]]},
 };
+// Pre-cache min/max so Y-axis is stable every frame
+Object.values(SERIES).forEach(s=>{
+  s.mn=Math.min(...s.data);
+  s.mx=Math.max(...s.data);
+});
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function idxToDate(series,i){const y=series.startYear+Math.floor(i/12),m=i%12;return`${MONTHS[m]} ${y}`}
 
@@ -621,8 +637,8 @@ function resizeChart(){
 }
 function iX(s,i){return PAD.l+(i/(s.data.length-1))*(cW-PAD.l-PAD.r)}
 function iY(s,v){
-  const vals=s.data,mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1;
-  return PAD.t+(1-(v-mn)/rng)*(cH-PAD.t-PAD.b);
+  const rng=s.mx-s.mn||1;
+  return PAD.t+(1-(v-s.mn)/rng)*(cH-PAD.t-PAD.b);
 }
 function inRec(s,i){return s.rec.some(([a,b])=>i>=a&&i<=b)}
 
@@ -631,7 +647,7 @@ function drawMain(prog,hoverI=-1){
   mctx.clearRect(0,0,cW,cH);
 
   // Guide lines
-  const vals=s.data;const mn=Math.min(...vals),mx=Math.max(...vals);
+  const vals=s.data,mn=s.mn,mx=s.mx;
   const step=(mx-mn)/4;
   for(let i=0;i<=4;i++){
     const v=mn+step*i,y=iY(s,v);
