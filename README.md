@@ -3,7 +3,7 @@
 An end-to-end Python data pipeline that fetches, cleans, and visualizes key US and Washington State economic indicators using the FRED API — built to demonstrate real-world ETL, pandas data wrangling, statistical analysis, and interactive dashboarding.
 
 
-**Live demo:** *https://economic-pulse-dashboard-bwxtaias7g4h7ctqpcntbg.streamlit.app/*
+**Live demo:** *[https://economic-pulse-dashboard-bwxtaias7g4h7ctqpcntbg.streamlit.app/](https://tarang-tj.github.io/economic-pulse-dashboard/)*
 
 ---
 
