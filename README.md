@@ -1,6 +1,6 @@
-# 📈 Economic Pulse Dashboard
+# Economic Pulse Dashboard
 
-An end-to-end Python data pipeline that fetches, cleans, and visualizes key US and Washington State economic indicators using the FRED API — built to demonstrate real-world ETL, pandas data wrangling, statistical analysis, and interactive dashboarding.
+A Python data pipeline that fetches, cleans, and visualizes key US and Washington State economic indicators from the FRED API, then serves them as an interactive Streamlit dashboard. It handles the full path from raw API pull to charted output: caching, validation, derived metrics, and NBER recession context.
 
 
 **Live demo:** *https://tarang-tj.github.io/economic-pulse-dashboard/*
@@ -51,8 +51,8 @@ economic-pulse-dashboard/
 ├── pipeline.py         # ETL: fetch → validate → clean → cache
 ├── analysis.py         # Derived metrics: trends, correlations, stats
 ├── config.py           # Series definitions and constants
+├── index.html          # Static demo page (GitHub Pages)
 ├── requirements.txt
-├── .env.example        # API key template
 └── .gitignore
 ```
 
@@ -62,7 +62,7 @@ economic-pulse-dashboard/
 
 ### 1. Clone the repo
 ```bash
-git clone https://github.com/YOUR_USERNAME/economic-pulse-dashboard.git
+git clone https://github.com/tarang-tj/economic-pulse-dashboard.git
 cd economic-pulse-dashboard
 ```
 
@@ -84,8 +84,8 @@ pip install -r requirements.txt
 
 ### 5. Set up your environment
 ```bash
-cp .env.example .env
-# Edit .env and paste your FRED_API_KEY
+# Create a .env file in the project root with your key
+echo "FRED_API_KEY=your_key_here" > .env
 ```
 
 ### 6. Run the dashboard
