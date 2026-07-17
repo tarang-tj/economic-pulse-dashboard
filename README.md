@@ -5,6 +5,8 @@ A Python data pipeline that fetches, cleans, and visualizes key US and Washingto
 
 **Live demo:** *https://tarang-tj.github.io/economic-pulse-dashboard/*
 
+![Economic Pulse Dashboard: 7 FRED indicator cards with trend labels above labor-market and inflation charts](docs/dashboard.png)
+
 ---
 
 ## What It Does
