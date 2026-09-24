@@ -1,6 +1,8 @@
 # app.py — Economic Pulse Dashboard
 # Run: streamlit run app.py
 
+import os
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -10,7 +12,10 @@ from datetime import datetime
 from pipeline import load_all, get_latest
 from analysis import get_summary_stats, compute_rolling, correlation_matrix, get_recession_bands
 from forecast import forecast_series, MIN_OBSERVATIONS
-from config import FRED_SERIES, LOOKBACK_YEARS, CATEGORY_ORDER
+from health_score import health_score
+from sahm import sahm_rule, current_status as sahm_current_status
+from briefing import generate_briefing, build_briefing_inputs
+from config import FRED_SERIES, LOOKBACK_YEARS, CATEGORY_ORDER, SAHM_TRIGGER_THRESHOLD
 
 FORECAST_HORIZON_MONTHS = 6
 
@@ -244,6 +249,104 @@ for i, (sid, df) in enumerate(data.items()):
           <div class="metric-date">{stats['current_date']}</div>
         </div>
         """, unsafe_allow_html=True)
+
+
+# ─────────────────────────────────────────────
+# Economic Health Score, Sahm Rule, AI Briefing
+# ─────────────────────────────────────────────
+
+HEALTH_BAND_COLORS = {
+    "Contraction": PALETTE["danger"],
+    "Weak": PALETTE["accent"],
+    "Moderate": PALETTE["primary"],
+    "Strong": PALETTE["secondary"],
+}
+
+st.markdown('<p class="section-header">Economic Health Score · Sahm Rule · AI Briefing</p>', unsafe_allow_html=True)
+
+score_result = None
+sahm_status = None
+col_gauge, col_sahm = st.columns([1, 1.4])
+
+with col_gauge:
+    try:
+        score_result = health_score(data)
+    except ValueError as e:
+        st.caption(f"⚠️ Health Score unavailable: {e}")
+    else:
+        band_color = HEALTH_BAND_COLORS.get(score_result["band"], PALETTE["primary"])
+        fig_gauge = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=score_result["score"],
+            number={"suffix": "", "font": {"color": "#e8f0fe", "size": 36}},
+            title={"text": f"Economic Health Score — {score_result['band']}", "font": {"size": 13, "color": "#c8d8e8"}},
+            gauge={
+                "axis": {"range": [0, 100], "tickcolor": PALETTE["grid"]},
+                "bar": {"color": band_color},
+                "bgcolor": PALETTE["bg"],
+                "borderwidth": 0,
+                "steps": [
+                    {"range": [0, 25], "color": "rgba(248,113,113,0.18)"},
+                    {"range": [25, 50], "color": "rgba(245,158,11,0.18)"},
+                    {"range": [50, 75], "color": "rgba(59,130,246,0.18)"},
+                    {"range": [75, 100], "color": "rgba(52,211,153,0.18)"},
+                ],
+            },
+        ))
+        fig_gauge.update_layout(**{**PLOTLY_LAYOUT, "height": 260})
+        st.plotly_chart(fig_gauge, use_container_width=True)
+
+with col_sahm:
+    if "UNRATE" in data:
+        sahm_df = sahm_rule(data["UNRATE"]["value"])
+        sahm_status = sahm_current_status(data["UNRATE"]["value"])
+        sahm_window = sahm_df[sahm_df.index >= cutoff].dropna(subset=["gap"])
+
+        fig_sahm = go.Figure()
+        fig_sahm.add_trace(go.Scatter(
+            x=sahm_window.index, y=sahm_window["gap"],
+            mode="lines", name="Sahm gap (pp)",
+            line=dict(color=PALETTE["accent"], width=2),
+            fill="tozeroy", fillcolor="rgba(245,158,11,0.10)",
+        ))
+        fig_sahm.add_hline(
+            y=SAHM_TRIGGER_THRESHOLD, line_dash="dash", line_color=PALETTE["danger"],
+            annotation_text=f"Trigger ({SAHM_TRIGGER_THRESHOLD}pp)", annotation_font_color=PALETTE["danger"],
+        )
+        fig_sahm.update_layout(**PLOTLY_LAYOUT, title="Sahm Rule: 3-mo avg minus 12-mo trailing min", height=260)
+        st.plotly_chart(fig_sahm, use_container_width=True)
+
+        if sahm_status["as_of"]:
+            status_text = "🔴 TRIGGERED" if sahm_status["triggered"] else "🟢 Not triggered"
+            st.caption(f"{status_text} · gap = {sahm_status['gap']:.2f}pp as of {sahm_status['as_of']}")
+    else:
+        st.caption("⚠️ Sahm Rule requires the UNRATE series to be selected.")
+
+st.markdown('<p class="section-header" style="margin-top:8px">AI Economic Briefing</p>', unsafe_allow_html=True)
+
+def _resolve_anthropic_key() -> str | None:
+    env_key = os.getenv("ANTHROPIC_API_KEY")
+    if env_key:
+        return env_key
+    try:
+        return st.secrets.get("ANTHROPIC_API_KEY")
+    except Exception:
+        return None
+
+
+api_key = _resolve_anthropic_key()
+if score_result is not None:
+    summaries = {sid: get_summary_stats(df, lookback_years=lookback) for sid, df in data.items()}
+    briefing_inputs = build_briefing_inputs(summaries, score_result, sahm_status or {"as_of": None})
+    briefing = generate_briefing(briefing_inputs, api_key=api_key)
+    if briefing["source"] == "disabled":
+        st.info(briefing["text"])
+    else:
+        st.markdown(f'<div class="metric-card">{briefing["text"]}</div>', unsafe_allow_html=True)
+        if briefing["source"] == "fallback":
+            st.caption(f"Deterministic fallback used: {briefing['reason']}")
+else:
+    st.caption("AI briefing requires the Economic Health Score to be available first.")
 
 
 # ─────────────────────────────────────────────

@@ -3,5 +3,6 @@
 .cache/
 __pycache__/
 venv/
+.pyenv-ep/
 *.pyc
 env
