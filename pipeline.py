@@ -15,6 +15,7 @@ import pandas as pd
 import requests
 from dotenv import load_dotenv
 
+from analysis import infer_periods_per_year
 from config import FRED_SERIES, CACHE_TTL_HOURS, DATE_FORMAT
 
 load_dotenv()
@@ -117,13 +118,20 @@ def _clean(series_id: str, records: list[dict]) -> pd.DataFrame:
     # 5. Drop duplicates
     df = df[~df.index.duplicated(keep="last")]
 
-    # 6. Year-over-year % change (meaningful for levels, not rates)
+    # 6. Year-over-year change, using a frequency-aware lag: 12 rows for a
+    # monthly series but 4 for a quarterly one (e.g. GDPC1), never a fixed
+    # 12 regardless of cadence — a hardcoded 12-row lag on quarterly data
+    # is 3 years back, not 1.
     meta = FRED_SERIES.get(series_id, {})
     unit = meta.get("unit", "")
+    try:
+        lag = infer_periods_per_year(df.index)
+    except ValueError:
+        lag = 12  # not enough history yet to infer; falls back to monthly
     if unit not in ("%",):
-        df["yoy_pct"] = df["value"].pct_change(periods=12) * 100
+        df["yoy_pct"] = df["value"].pct_change(periods=lag) * 100
     else:
-        df["yoy_pct"] = df["value"].diff(periods=12)   # pp change for rates
+        df["yoy_pct"] = df["value"].diff(periods=lag)   # pp change for rates
 
     df["series_id"] = series_id
     df["series_name"] = meta.get("short", series_id)

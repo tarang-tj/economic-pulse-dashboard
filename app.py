@@ -1,6 +1,7 @@
 # app.py — Economic Pulse Dashboard
 # Run: streamlit run app.py
 
+import logging
 import os
 
 import streamlit as st
@@ -15,7 +16,10 @@ from forecast import forecast_series, MIN_OBSERVATIONS
 from health_score import health_score
 from sahm import sahm_rule, current_status as sahm_current_status
 from briefing import generate_briefing, build_briefing_inputs
-from config import FRED_SERIES, LOOKBACK_YEARS, CATEGORY_ORDER, SAHM_TRIGGER_THRESHOLD
+from dashboard_helpers import briefing_cache_key, safe_briefing_html
+from config import FRED_SERIES, LOOKBACK_YEARS, CATEGORY_ORDER, SAHM_TRIGGER_THRESHOLD, CACHE_TTL_HOURS
+
+logger = logging.getLogger(__name__)
 
 FORECAST_HORIZON_MONTHS = 6
 
@@ -272,7 +276,12 @@ with col_gauge:
     try:
         score_result = health_score(data)
     except ValueError as e:
-        st.caption(f"⚠️ Health Score unavailable: {e}")
+        # L6: name the fix, not just the symptom — select all 7 series.
+        st.caption(f"⚠️ Health Score unavailable: {e} Select all 7 series in the sidebar to enable it.")
+    except Exception:
+        # L4: any unexpected failure here must not crash the whole page.
+        logger.exception("Unexpected error computing the Health Score.")
+        st.warning("⚠️ Health Score is temporarily unavailable due to an unexpected error.")
     else:
         band_color = HEALTH_BAND_COLORS.get(score_result["band"], PALETTE["primary"])
         fig_gauge = go.Figure(go.Indicator(
@@ -298,29 +307,39 @@ with col_gauge:
 
 with col_sahm:
     if "UNRATE" in data:
-        sahm_df = sahm_rule(data["UNRATE"]["value"])
-        sahm_status = sahm_current_status(data["UNRATE"]["value"])
-        sahm_window = sahm_df[sahm_df.index >= cutoff].dropna(subset=["gap"])
+        try:
+            sahm_df = sahm_rule(data["UNRATE"]["value"])
+            sahm_status = sahm_current_status(data["UNRATE"]["value"])
+        except Exception:
+            # L4: an unguarded sahm_rule() call used to be able to crash the
+            # whole page; never let one section take down the dashboard.
+            logger.exception("Unexpected error computing the Sahm Rule.")
+            st.warning("⚠️ Sahm Rule is temporarily unavailable due to an unexpected error.")
+            sahm_status = None
+        else:
+            sahm_window = sahm_df[sahm_df.index >= cutoff].dropna(subset=["gap"])
 
-        fig_sahm = go.Figure()
-        fig_sahm.add_trace(go.Scatter(
-            x=sahm_window.index, y=sahm_window["gap"],
-            mode="lines", name="Sahm gap (pp)",
-            line=dict(color=PALETTE["accent"], width=2),
-            fill="tozeroy", fillcolor="rgba(245,158,11,0.10)",
-        ))
-        fig_sahm.add_hline(
-            y=SAHM_TRIGGER_THRESHOLD, line_dash="dash", line_color=PALETTE["danger"],
-            annotation_text=f"Trigger ({SAHM_TRIGGER_THRESHOLD}pp)", annotation_font_color=PALETTE["danger"],
-        )
-        fig_sahm.update_layout(**PLOTLY_LAYOUT, title="Sahm Rule: 3-mo avg minus 12-mo trailing min", height=260)
-        st.plotly_chart(fig_sahm, use_container_width=True)
+            fig_sahm = go.Figure()
+            fig_sahm.add_trace(go.Scatter(
+                x=sahm_window.index, y=sahm_window["gap"],
+                mode="lines", name="Sahm gap (pp)",
+                line=dict(color=PALETTE["accent"], width=2),
+                fill="tozeroy", fillcolor="rgba(245,158,11,0.10)",
+            ))
+            fig_sahm.add_hline(
+                y=SAHM_TRIGGER_THRESHOLD, line_dash="dash", line_color=PALETTE["danger"],
+                annotation_text=f"Trigger ({SAHM_TRIGGER_THRESHOLD}pp)", annotation_font_color=PALETTE["danger"],
+            )
+            fig_sahm.update_layout(**PLOTLY_LAYOUT, title="Sahm Rule: 3-mo avg minus 12-mo trailing min", height=260)
+            st.plotly_chart(fig_sahm, use_container_width=True)
 
-        if sahm_status["as_of"]:
-            status_text = "🔴 TRIGGERED" if sahm_status["triggered"] else "🟢 Not triggered"
-            st.caption(f"{status_text} · gap = {sahm_status['gap']:.2f}pp as of {sahm_status['as_of']}")
+            if sahm_status["as_of"]:
+                status_text = "🔴 TRIGGERED" if sahm_status["triggered"] else "🟢 Not triggered"
+                st.caption(f"{status_text} · gap = {sahm_status['gap']:.2f}pp as of {sahm_status['as_of']}")
     else:
-        st.caption("⚠️ Sahm Rule requires the UNRATE series to be selected.")
+        # L6: the app requires all 7 series for the Health Score/briefing —
+        # name the actual count, not a vague "the UNRATE series".
+        st.caption("⚠️ Sahm Rule requires the US Unemployment (UNRATE) series to be selected.")
 
 st.markdown('<p class="section-header" style="margin-top:8px">AI Economic Briefing</p>', unsafe_allow_html=True)
 
@@ -334,15 +353,33 @@ def _resolve_anthropic_key() -> str | None:
         return None
 
 
+@st.cache_data(ttl=CACHE_TTL_HOURS * 3600)
+def _cached_generate_briefing(inputs_key: tuple, _inputs: dict, _api_key: str | None) -> dict:
+    """
+    H1: cache the briefing per data refresh instead of calling the Claude
+    API on every Streamlit rerun (slider move, checkbox toggle, etc).
+
+    `inputs_key` (a hashable, sorted tuple of `_inputs.items()`) is the
+    actual cache key. `_inputs` and `_api_key` are underscore-prefixed so
+    Streamlit excludes them from hashing (a dict isn't hashable, and the
+    API key shouldn't be part of the cache key or be retained by the cache
+    beyond this call). The cache is cleared by the sidebar Refresh button
+    alongside the underlying data cache.
+    """
+    return generate_briefing(_inputs, api_key=_api_key)
+
+
 api_key = _resolve_anthropic_key()
 if score_result is not None:
     summaries = {sid: get_summary_stats(df, lookback_years=lookback) for sid, df in data.items()}
     briefing_inputs = build_briefing_inputs(summaries, score_result, sahm_status or {"as_of": None})
-    briefing = generate_briefing(briefing_inputs, api_key=api_key)
+    briefing = _cached_generate_briefing(briefing_cache_key(briefing_inputs), briefing_inputs, api_key)
     if briefing["source"] == "disabled":
         st.info(briefing["text"])
     else:
-        st.markdown(f'<div class="metric-card">{briefing["text"]}</div>', unsafe_allow_html=True)
+        # M4: never render model output as raw HTML — escape it (and '$',
+        # which Streamlit would otherwise treat as LaTeX).
+        st.markdown(f'<div class="metric-card">{safe_briefing_html(briefing["text"])}</div>', unsafe_allow_html=True)
         if briefing["source"] == "fallback":
             st.caption(f"Deterministic fallback used: {briefing['reason']}")
 else:

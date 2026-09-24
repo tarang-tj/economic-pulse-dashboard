@@ -105,6 +105,19 @@ HEALTH_SCORE_DIRECTION = {
 HEALTH_SCORE_LOOKBACK_YEARS = 10
 HEALTH_SCORE_MIN_OBSERVATIONS = 24  # min history required per indicator
 
+# Indicators that are trending LEVELS, not rates: scoring the level itself
+# means "latest == historical max" almost always, which hides the actual
+# signal (inflation, payroll growth, GDP growth). These are instead scored
+# on their YoY % change (CPI as distance from the 2% target, the rest as
+# raw YoY growth — see health_score.py).
+HEALTH_SCORE_RATE_SERIES = {"CPIAUCSL", "PAYEMS", "GDPC1"}
+HEALTH_SCORE_CPI_TARGET_PCT = 2.0  # Fed's inflation target, for distance scoring
+
+# A series is "stale" (and the score refuses to compute) if its latest
+# observation is older than this many months, per its own frequency.
+HEALTH_SCORE_STALE_MONTHS_MONTHLY = 4
+HEALTH_SCORE_STALE_MONTHS_QUARTERLY = 7
+
 # (low, high, label) — score bands, low inclusive, high exclusive (100 inclusive in top band)
 HEALTH_SCORE_BANDS = [
     (0, 25, "Contraction"),

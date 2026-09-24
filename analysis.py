@@ -11,6 +11,34 @@ from config import FRED_SERIES
 
 
 # ─────────────────────────────────────────────
+# Frequency inference
+# ─────────────────────────────────────────────
+
+def infer_periods_per_year(index: pd.DatetimeIndex) -> int:
+    """
+    Infer how many observations per year a DatetimeIndex represents, from
+    the median gap between consecutive dates. Used to compute a correct
+    YoY lag (12 for monthly data, 4 for quarterly) instead of assuming a
+    fixed period count regardless of the series' real frequency.
+
+    Raises:
+        ValueError: fewer than 2 observations, or the median gap does not
+                    resemble a monthly or quarterly cadence.
+    """
+    idx = pd.Series(index).sort_values()
+    gaps = idx.diff().dropna()
+    if gaps.empty:
+        raise ValueError("cannot infer frequency from fewer than 2 observations.")
+
+    median_days = gaps.median().days
+    if median_days <= 45:
+        return 12  # monthly
+    if median_days <= 200:
+        return 4  # quarterly
+    raise ValueError(f"cannot infer a monthly/quarterly frequency (median gap {median_days} days).")
+
+
+# ─────────────────────────────────────────────
 # Rolling statistics
 # ─────────────────────────────────────────────
 
@@ -86,19 +114,38 @@ def get_summary_stats(df: pd.DataFrame, lookback_years: int = 5) -> dict:
     """
     Compute summary statistics for a series over a given lookback window.
 
+    M1 fix: `prev_year`/`yoy_change` used to be a raw level difference at a
+    fixed 13-row offset — index points for CPI (not inflation %), and ~3
+    years back for quarterly GDP (13 quarters, not 1 year). Instead this
+    uses the pipeline's `yoy_pct` column, which is already unit-correct
+    (percent for levels, percentage points for rates) and frequency-aware
+    (12-period lag for monthly series, 4-period lag for quarterly ones —
+    see pipeline._clean). `period_change_pct` is the most-recent-period %
+    change (month-over-month for monthly series, quarter-over-quarter for
+    quarterly ones like GDP) — callers label it per the series' own cadence.
+
     Returns:
-        Dict with: current, prev_month, prev_year, mom_change, yoy_change,
-                   period_min, period_max, period_mean, trend
+        Dict with: current, current_date, prev_month, mom_change, yoy_pct,
+                   period_change_pct, period_min, period_max, period_mean,
+                   trend
     """
     cutoff = df.index.max() - pd.DateOffset(years=lookback_years)
-    window = df[df.index >= cutoff]["value"].dropna()
+    windowed = df[df.index >= cutoff]
+    window = windowed["value"].dropna()
 
     current = float(window.iloc[-1])
     prev_month = float(window.iloc[-2]) if len(window) >= 2 else None
-    prev_year = float(window.iloc[-13]) if len(window) >= 13 else None
-
     mom = round(current - prev_month, 3) if prev_month is not None else None
-    yoy = round(current - prev_year, 3) if prev_year is not None else None
+
+    period_change_pct = None
+    if prev_month is not None and prev_month != 0:
+        period_change_pct = round((current - prev_month) / abs(prev_month) * 100, 3)
+
+    yoy_pct = None
+    if "yoy_pct" in windowed.columns:
+        yoy_series = windowed["yoy_pct"].dropna()
+        if not yoy_series.empty and yoy_series.index[-1] == window.index[-1]:
+            yoy_pct = round(float(yoy_series.iloc[-1]), 3)
 
     trend = detect_trend(df, months=6)
 
@@ -106,9 +153,9 @@ def get_summary_stats(df: pd.DataFrame, lookback_years: int = 5) -> dict:
         "current": current,
         "current_date": window.index[-1].strftime("%b %Y"),
         "prev_month": prev_month,
-        "prev_year": prev_year,
         "mom_change": mom,
-        "yoy_change": yoy,
+        "period_change_pct": period_change_pct,
+        "yoy_pct": yoy_pct,
         "period_min": round(float(window.min()), 3),
         "period_max": round(float(window.max()), 3),
         "period_mean": round(float(window.mean()), 3),
