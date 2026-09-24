@@ -15,7 +15,7 @@ A Python data pipeline that fetches, cleans, and visualizes key US and Washingto
 |-------|-------------|
 | **Extract** | Pulls 7 macroeconomic time series from the FRED REST API with local 12-hour caching |
 | **Transform** | Cleans missing values, casts types, computes YoY changes and rolling statistics with pandas |
-| **Analyze** | Detects short-term trends via linear regression, builds correlation matrix, flags recession periods |
+| **Analyze** | Detects short-term trends via linear regression, builds correlation matrix, flags recession periods, forecasts 6 months ahead with ARIMA(1,1,1) |
 | **Load** | Renders an interactive Streamlit dashboard with Plotly charts |
 
 ---
@@ -40,6 +40,7 @@ A Python data pipeline that fetches, cleans, and visualizes key US and Washingto
 - **pandas** — data cleaning, resampling, rolling statistics
 - **requests** — FRED API integration
 - **scipy** — linear regression for trend detection
+- **statsmodels** — ARIMA(1,1,1) forecasting with 80%/95% confidence intervals
 - **plotly** — interactive time series charts and heatmaps
 - **Streamlit** — dashboard framework
 
@@ -52,8 +53,10 @@ economic-pulse-dashboard/
 ├── app.py              # Streamlit dashboard (entry point)
 ├── pipeline.py         # ETL: fetch → validate → clean → cache
 ├── analysis.py         # Derived metrics: trends, correlations, stats
+├── forecast.py         # ARIMA(1,1,1) forecasting with confidence intervals
 ├── config.py           # Series definitions and constants
 ├── index.html          # Static demo page (GitHub Pages)
+├── tests/              # pytest suite (no network/API key required)
 ├── requirements.txt
 └── .gitignore
 ```
@@ -107,6 +110,8 @@ streamlit run app.py
 
 **Recession shading** — NBER-dated recessions are overlaid as translucent bands on all time series charts, making cyclical context immediately visible.
 
+**ARIMA forecasting** — `forecast.py` fits `statsmodels` ARIMA(1,1,1) on each monthly series and projects 6 months ahead, reporting 80% and 95% confidence intervals plus the fitted model's AIC. Series with fewer than 24 clean monthly observations, or a fit that fails to converge, raise a clear error instead of silently returning numbers — no fallback to fabricated forecasts. Toggle it in the sidebar as "Show 6-month ARIMA(1,1,1) forecast".
+
 ---
 
 ## Deploy to Streamlit Community Cloud (Free)
@@ -124,7 +129,6 @@ streamlit run app.py
 Ideas for future enhancements:
 - Add state-level comparisons beyond Washington (California, Texas, etc.)
 - Pull BLS industry employment breakdowns
-- Add a forecasting tab using `statsmodels` ARIMA
 - Email/Slack alerts when an indicator crosses a threshold
 - Deploy as a scheduled pipeline with Prefect or Airflow
 

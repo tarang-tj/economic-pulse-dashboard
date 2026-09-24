@@ -9,7 +9,10 @@ from datetime import datetime
 
 from pipeline import load_all, get_latest
 from analysis import get_summary_stats, compute_rolling, correlation_matrix, get_recession_bands
+from forecast import forecast_series, MIN_OBSERVATIONS
 from config import FRED_SERIES, LOOKBACK_YEARS, CATEGORY_ORDER
+
+FORECAST_HORIZON_MONTHS = 6
 
 # ─────────────────────────────────────────────
 # Page config
@@ -153,6 +156,7 @@ with st.sidebar:
     lookback = st.slider("Years of history", min_value=1, max_value=20, value=LOOKBACK_YEARS, step=1)
     show_recession = st.checkbox("Show recession bands", value=True)
     show_rolling = st.checkbox("Show 3-month rolling mean", value=False)
+    show_forecast = st.checkbox(f"Show {FORECAST_HORIZON_MONTHS}-month ARIMA(1,1,1) forecast", value=False)
 
     st.divider()
     st.markdown('<p class="section-header">Series</p>', unsafe_allow_html=True)
@@ -308,9 +312,54 @@ for cat in CATEGORY_ORDER:
             hovertemplate=f"<b>%{{y:.2f}}</b> {meta['unit']}<extra>{meta['short']}</extra>",
         ))
 
+        # ARIMA(1,1,1) forecast with 80%/95% confidence bands
+        forecast_title_suffix = ""
+        if show_forecast:
+            try:
+                fc = forecast_series(data[sid]["value"], horizon=FORECAST_HORIZON_MONTHS)
+            except ValueError as e:
+                st.caption(f"⚠️ {meta['short']}: forecast unavailable ({e})")
+            except RuntimeError as e:
+                st.caption(f"⚠️ {meta['short']}: ARIMA fit failed ({e})")
+            else:
+                fig.add_trace(go.Scatter(
+                    x=fc.dates, y=fc.upper_95,
+                    fill=None, mode="lines",
+                    line=dict(color="rgba(0,0,0,0)", width=0),
+                    showlegend=False, hoverinfo="skip",
+                ))
+                fig.add_trace(go.Scatter(
+                    x=fc.dates, y=fc.lower_95,
+                    fill="tonexty", mode="lines",
+                    fillcolor="rgba(245, 158, 11, 0.10)",
+                    line=dict(color="rgba(0,0,0,0)", width=0),
+                    name="95% CI", hoverinfo="skip",
+                ))
+                fig.add_trace(go.Scatter(
+                    x=fc.dates, y=fc.upper_80,
+                    fill=None, mode="lines",
+                    line=dict(color="rgba(0,0,0,0)", width=0),
+                    showlegend=False, hoverinfo="skip",
+                ))
+                fig.add_trace(go.Scatter(
+                    x=fc.dates, y=fc.lower_80,
+                    fill="tonexty", mode="lines",
+                    fillcolor="rgba(245, 158, 11, 0.22)",
+                    line=dict(color="rgba(0,0,0,0)", width=0),
+                    name="80% CI", hoverinfo="skip",
+                ))
+                fig.add_trace(go.Scatter(
+                    x=fc.dates, y=fc.point,
+                    mode="lines+markers", name="ARIMA(1,1,1) forecast",
+                    line=dict(color=PALETTE["accent"], width=2, dash="dash"),
+                    marker=dict(size=4),
+                    hovertemplate=f"<b>%{{y:.2f}}</b> {meta['unit']}<extra>Forecast</extra>",
+                ))
+                forecast_title_suffix = f" · ARIMA(1,1,1) AIC={fc.aic:.1f}"
+
         fig.update_layout(
             **PLOTLY_LAYOUT,
-            title=dict(text=meta["name"], font=dict(size=13, color="#c8d8e8"), x=0),
+            title=dict(text=meta["name"] + forecast_title_suffix, font=dict(size=13, color="#c8d8e8"), x=0),
             yaxis_title=meta["unit"],
             height=320,
         )
