@@ -257,3 +257,8 @@ def test_gdp_period_change_is_labelled_qoq_not_mom():
     assert inputs["GDPC1_qoq_pct"] == 0.83
     assert inputs["GDPC1_yoy_pct"] == 2.4
     assert "GDPC1_mom_change" not in inputs
+
+
+def test_sahm_threshold_is_citable():
+    inputs = build_briefing_inputs({}, {"score": 62.5, "band": "Moderate"}, {"gap": 0.10, "as_of": "Aug 2026", "threshold": 0.5})
+    assert _numbers_are_grounded("The Sahm gap is 0.1pp, under the 0.5pp trigger.", inputs)

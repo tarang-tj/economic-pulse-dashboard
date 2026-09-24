@@ -85,7 +85,7 @@ _INDICATOR_KEYWORDS = [
     ("interest rate", "FEDFUNDS"),
     ("gross domestic product", "GDPC1"),
     ("gdp", "GDPC1"),
-    ("sahm", "sahm_gap_pp"),
+    ("sahm", "sahm_"),  # gap and threshold are both citable
     ("health score", "health_score"),
 ]
 
@@ -229,6 +229,8 @@ def build_briefing_inputs(summaries: dict, score: dict, sahm: dict) -> dict:
     }
     if sahm.get("as_of") is not None:
         inputs["sahm_gap_pp"] = sahm["gap"]
+        # The trigger threshold is a fact the briefing may cite ("under the 0.5pp line").
+        inputs["sahm_threshold_pp"] = sahm.get("threshold", 0.5)
 
     for sid, s in summaries.items():
         inputs[f"{sid}_current"] = s["current"]
